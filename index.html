@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#1f1a17">
+<title>Cash Register</title>
+<style>
+/* =====================================================================
+   Cafe cash register — single file, no server, nothing stored online.
+   EDIT THE MENU AND SETTINGS IN THE "CONFIG" BLOCK NEAR THE BOTTOM.
+   ===================================================================== */
+:root{
+  --bg:#f6f1ea; --panel:#ffffff; --ink:#1f1a17; --muted:#7a6f66; --line:#e6ddd2;
+  --accent:#b5562b; --accent-ink:#fff; --ok:#2f7d4f; --warn:#c0392b; --chip:#efe6da;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+.app{display:grid;grid-template-columns:1fr 360px;height:100vh;height:100dvh}
+.screen{display:none}.screen.on{display:contents}
+
+/* ---------- Menu ---------- */
+.menu{display:flex;flex-direction:column;min-width:0;padding:16px 16px 0}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.head h1{font-size:22px;margin:0;letter-spacing:-.01em}
+.head small{color:var(--muted);font-size:14px}
+.cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:none;padding:10px 18px;border-radius:999px;background:var(--chip);font-weight:600;font-size:16px}
+.cat.on{background:var(--ink);color:#fff}
+.grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:12px;align-content:start;padding-bottom:16px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 14px;
+  min-height:104px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;
+  position:relative;transition:transform .06s}
+.item:active{transform:scale(.97);background:#fbf7f2}
+.item b{font-size:18px;line-height:1.2}
+.item span{color:var(--accent);font-weight:700;font-size:17px}
+.item .q{position:absolute;top:8px;right:8px;background:var(--accent);color:#fff;font-size:14px;
+  font-weight:700;min-width:26px;height:26px;border-radius:13px;display:grid;place-items:center;padding:0 7px}
+
+/* ---------- Order side panel ---------- */
+.side{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side h2{margin:0;padding:16px 18px;font-size:18px;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center}
+.clear{background:none;color:var(--warn);font-size:15px;font-weight:600;padding:6px 8px}
+.lines{flex:1;overflow-y:auto;padding:6px 0}
+.empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:16px}
+.line{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 18px;border-bottom:1px solid var(--line)}
+.line .n{font-weight:600;font-size:16px}
+.line .p{font-weight:700;font-size:16px;text-align:right}
+.qty{display:flex;align-items:center;gap:6px;grid-column:1/-1}
+.qty button{width:40px;height:36px;border-radius:10px;background:var(--chip);font-size:20px;font-weight:700}
+.qty em{font-style:normal;min-width:28px;text-align:center;font-weight:700;font-size:17px}
+.qty small{color:var(--muted);margin-left:auto;font-size:14px}
+.foot{padding:14px 18px 18px;border-top:1px solid var(--line)}
+.tot{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.tot span{color:var(--muted);font-size:16px}
+.tot b{font-size:30px}
+.big{width:100%;padding:18px;border-radius:var(--r);background:var(--accent);color:var(--accent-ink);
+  font-size:20px;font-weight:700}
+.big:disabled{opacity:.35}
+.big.ok{background:var(--ok)}
+
+/* ---------- Payment ---------- */
+.pay{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;
+  display:flex;flex-direction:column;min-height:0}
+.back{align-self:flex-start;background:var(--chip);padding:10px 16px;border-radius:10px;font-weight:600;margin-bottom:14px}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line)}
+.row span{color:var(--muted);font-size:18px}
+.row b{font-size:28px}
+.row.change b{font-size:44px;color:var(--ok)}
+.row.change.short b{color:var(--warn);font-size:28px}
+.summary{flex:1;overflow-y:auto;margin-top:12px;font-size:15px;color:var(--muted)}
+.summary div{display:flex;justify-content:space-between;padding:4px 0}
+.display{font-size:44px;font-weight:700;text-align:right;padding:8px 12px;background:var(--bg);
+  border-radius:10px;margin-bottom:12px;min-height:70px}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.quick button{padding:14px 6px;border-radius:10px;background:var(--chip);font-weight:700;font-size:18px}
+.quick .exact{background:var(--ink);color:#fff}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;margin-bottom:12px}
+.pad button{border-radius:10px;background:var(--bg);font-size:26px;font-weight:600;min-height:52px}
+.pad button:active,.quick button:active{filter:brightness(.92)}
+
+/* ---------- Toast ---------- */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(120px);
+  background:var(--ink);color:#fff;padding:14px 22px;border-radius:12px;font-weight:600;font-size:17px;
+  transition:transform .25s;z-index:9;max-width:90vw;text-align:center}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--warn)}
+
+/* Phone / portrait fallback */
+@media (max-width:820px){
+  .app{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  .side{border-left:0;border-top:1px solid var(--line);max-height:45vh}
+  .pay{grid-template-columns:1fr;overflow-y:auto}
+}
+@media print{ body *{visibility:hidden} #printArea,#printArea *{visibility:visible} #printArea{position:absolute;top:0;left:0} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- MENU SCREEN -->
+  <div class="screen on" id="scrMenu">
+    <section class="menu">
+      <div class="head"><h1 id="shopName"></h1><small id="clock"></small></div>
+      <div class="cats" id="cats"></div>
+      <div class="grid" id="grid"></div>
+    </section>
+    <aside class="side">
+      <h2>Order <button class="clear" id="btnClear">Clear</button></h2>
+      <div class="lines" id="lines"></div>
+      <div class="foot">
+        <div class="tot"><span id="itemCount">0 items</span><b id="total">$0</b></div>
+        <button class="big" id="btnPay" disabled>Charge</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- PAYMENT SCREEN -->
+  <div class="screen" id="scrPay">
+    <section class="pay">
+      <div class="card">
+        <button class="back" id="btnBack">← Back to order</button>
+        <div class="row"><span>Total</span><b id="payTotal"></b></div>
+        <div class="row"><span>Cash received</span><b id="payRecv"></b></div>
+        <div class="row change" id="changeRow"><span id="changeLbl">Change</span><b id="payChange"></b></div>
+        <div class="summary" id="paySummary"></div>
+      </div>
+      <div class="card">
+        <div class="display" id="display">0</div>
+        <div class="quick" id="quick"></div>
+        <div class="pad" id="pad"></div>
+        <button class="big ok" id="btnConfirm" disabled>Confirm &amp; Print</button>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="printArea" style="display:none"></div>
+
+<script>
+/* =====================================================================
+   CONFIG — edit this part only
+   ===================================================================== */
+const CONFIG = {
+  shopName: "Cafe",                 // shown at top of the screen and receipt
+  currencySymbol: "$",
+  decimals: 2,                      // 0 for currencies without cents (e.g. pesos)
+  cashButtons: [5, 10, 20, 50, 100],// quick-add bill buttons on the payment screen
+
+  // Printing:
+  //  "passprnt" -> Star PassPRNT app (Android tablet + Bluetooth TSP100). No preview.
+  //  "browser"  -> normal print dialog (for testing on a computer)
+  //  "none"     -> don't print at all
+  printMode: "passprnt",
+  paperWidthDots: 576,              // 576 = 80mm paper on TSP100III
+  openDrawer: false,                // true if a cash drawer is plugged into the printer
+  receiptFooter: "Thank you!",
+
+  // MENU — categories and items. Prices in normal units (3.5 = $3.50).
+  menu: [
+    { category: "Coffee", items: [
+      { name: "Espresso",      price: 3.00 },
+      { name: "Americano",     price: 3.50 },
+      { name: "Cappuccino",    price: 4.50 },
+      { name: "Latte",         price: 4.75 },
+      { name: "Drip Coffee",   price: 2.75 },
+    ]},
+    { category: "Food", items: [
+      { name: "Tostones",      price: 5.00 },
+      { name: "Empanada",      price: 3.50 },
+      { name: "Croissant",     price: 3.25 },
+      { name: "Sandwich",      price: 8.50 },
+    ]},
+    { category: "Drinks", items: [
+      { name: "Juice",         price: 4.00 },
+      { name: "Soda",          price: 2.50 },
+      { name: "Water",         price: 2.00 },
+    ]},
+  ],
+};
+/* ===================================================================== */
+
+const $ = id => document.getElementById(id);
+const scale = Math.pow(10, CONFIG.decimals);
+const toCents = v => Math.round(v * scale);           // all math in integer cents
+const money = c => CONFIG.currencySymbol + (c / scale).toLocaleString("en-US",
+  {minimumFractionDigits: CONFIG.decimals, maximumFractionDigits: CONFIG.decimals});
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+
+/* ---------- State (in memory only) ---------- */
+let order = [];            // [{name, price(cents), qty}]
+let activeCat = 0;
+let entry = "";            // typed cash amount, as a string
+
+/* ---------- Menu ---------- */
+function renderCats(){
+  $("cats").innerHTML = CONFIG.menu.map((c,i) =>
+    `<button class="cat ${i===activeCat?"on":""}" data-i="${i}">${esc(c.category)}</button>`).join("");
+}
+function renderGrid(){
+  const cat = CONFIG.menu[activeCat];
+  $("grid").innerHTML = cat.items.map((it,i) => {
+    const line = order.find(l => l.name === it.name);
+    return `<button class="item" data-i="${i}">
+      ${line ? `<i class="q">${line.qty}</i>` : ""}
+      <b>${esc(it.name)}</b><span>${money(toCents(it.price))}</span></button>`;
+  }).join("");
+}
+function renderOrder(){
+  const lines = $("lines");
+  if (!order.length){ lines.innerHTML = `<div class="empty">Tap items to add them</div>`; }
+  else lines.innerHTML = order.map((l,i) => `
+    <div class="line">
+      <span class="n">${esc(l.name)}</span><span class="p">${money(l.price*l.qty)}</span>
+      <div class="qty">
+        <button data-act="dec" data-i="${i}">−</button><em>${l.qty}</em>
+        <button data-act="inc" data-i="${i}">+</button>
+        <small>${money(l.price)} each</small>
+      </div>
+    </div>`).join("");
+  const n = order.reduce((a,l)=>a+l.qty,0);
+  $("itemCount").textContent = n + (n===1?" item":" items");
+  $("total").textContent = money(orderTotal());
+  $("btnPay").disabled = !order.length;
+  renderGrid();
+}
+const orderTotal = () => order.reduce((a,l)=>a+l.price*l.qty,0);
+
+$("cats").onclick = e => { const b=e.target.closest(".cat"); if(!b) return; activeCat=+b.dataset.i; renderCats(); renderGrid(); };
+$("grid").onclick = e => {
+  const b = e.target.closest(".item"); if(!b) return;
+  const it = CONFIG.menu[activeCat].items[+b.dataset.i];
+  const line = order.find(l => l.name === it.name);
+  if (line) line.qty++; else order.push({name: it.name, price: toCents(it.price), qty: 1});
+  renderOrder();
+};
+$("lines").onclick = e => {
+  const b = e.target.closest("button"); if(!b) return;
+  const l = order[+b.dataset.i];
+  if (b.dataset.act === "inc") l.qty++;
+  else if (--l.qty <= 0) order.splice(+b.dataset.i, 1);
+  renderOrder();
+};
+$("btnClear").onclick = () => { if (order.length && confirm("Clear this order?")) { order=[]; renderOrder(); } };
+$("btnPay").onclick = () => { entry=""; showScreen("scrPay"); renderPay(); };
+$("btnBack").onclick = () => showScreen("scrMenu");
+
+/* ---------- Payment ---------- */
+const received = () => entry ? Math.round(parseFloat(entry) * scale) || 0 : 0;
+
+function buildPad(){
+  const keys = ["1","2","3","4","5","6","7","8","9", CONFIG.decimals ? "." : "00","0","⌫"];
+  $("pad").innerHTML = keys.map(k=>`<button data-k="${k}">${k}</button>`).join("");
+  $("quick").innerHTML = `<button class="exact" data-q="exact">Exact</button>` +
+    CONFIG.cashButtons.map(v=>`<button data-q="${v}">+${CONFIG.currencySymbol}${v}</button>`).join("");
+}
+$("pad").onclick = e => {
+  const k = e.target.closest("button")?.dataset.k; if(!k) return;
+  if (k === "⌫") entry = entry.slice(0,-1);
+  else if (k === ".") { if (!entry.includes(".")) entry = (entry||"0") + "."; }
+  else {
+    const dot = entry.indexOf(".");
+    if (dot >= 0 && entry.length - dot > CONFIG.decimals) return;   // limit decimals
+    if (entry.replace(".","").length >= 9) return;
+    entry = (entry === "0" ? "" : entry) + k;
+  }
+  renderPay();
+};
+$("quick").onclick = e => {
+  const q = e.target.closest("button")?.dataset.q; if(!q) return;
+  const cents = q === "exact" ? orderTotal() : received() + toCents(+q);
+  entry = (cents/scale).toFixed(CONFIG.decimals);
+  renderPay();
+};
+function renderPay(){
+  const t = orderTotal(), r = received(), diff = r - t;
+  $("payTotal").textContent = money(t);
+  $("payRecv").textContent = money(r);
+  $("display").textContent = entry || "0";
+  const row = $("changeRow");
+  if (diff >= 0){ row.classList.remove("short"); $("changeLbl").textContent="Change"; $("payChange").textContent=money(diff); }
+  else { row.classList.add("short"); $("changeLbl").textContent="Still owed"; $("payChange").textContent=money(-diff); }
+  $("btnConfirm").disabled = !(r >= t && t > 0);
+  $("paySummary").innerHTML = order.map(l=>`<div><span>${l.qty} × ${esc(l.name)}</span><span>${money(l.price*l.qty)}</span></div>`).join("");
+}
+
+/* ---------- Bill number (kept only on this tablet, resets daily) ---------- */
+function nextBillNumber(){
+  const today = new Date().toDateString();
+  let n = 1;
+  try {
+    const s = JSON.parse(localStorage.getItem("billCounter") || "{}");
+    n = s.day === today ? s.n + 1 : 1;
+    localStorage.setItem("billCounter", JSON.stringify({day: today, n}));
+  } catch(_) {}
+  return String(n).padStart(4, "0");
+}
+function stamp(d = new Date()){
+  return d.toLocaleString("en-US",{weekday:"short",month:"short",day:"numeric"}) + ", " +
+         d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+}
+
+/* ---------- Receipt ---------- */
+function receiptHTML(bill, totalC, recvC){
+  const W = CONFIG.paperWidthDots;
+  const rows = order.map(l=>`<tr><td>${esc(l.name)}</td><td class="c">${l.qty}</td><td class="r">${money(l.price*l.qty)}</td></tr>`).join("");
+  const n = order.reduce((a,l)=>a+l.qty,0);
+  return `<html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no">
+<style>
+body{margin:0;width:${W}px;font-family:"Courier New",monospace;font-size:28px;color:#000;background:#fff}
+.w{padding:8px 4px 24px}
+h1{font-size:40px;text-align:center;margin:0 0 12px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;border-top:2px dashed #000;border-bottom:2px dashed #000;padding:6px 0}
+td{padding:6px 0;vertical-align:top}
+.c{text-align:center;width:70px}.r{text-align:right;width:170px}
+.hr{border-top:2px dashed #000;margin:8px 0}
+.b{font-weight:bold;font-size:34px}
+.f{text-align:center;margin-top:18px}
+</style></head><body><div class="w">
+<h1>${esc(CONFIG.shopName)}</h1>
+<div>Bill Number: #${bill}</div>
+<div>Time: ${stamp()}</div>
+<table><tr><th>Item</th><th class="c">Qty</th><th class="r">Price</th></tr>${rows}</table>
+<div class="hr"></div>
+<div>Total Items: ${n}</div>
+<div class="b">Total: ${money(totalC)}</div>
+<div>Cash: ${money(recvC)}</div>
+<div class="b">Change: ${money(recvC-totalC)}</div>
+${CONFIG.receiptFooter ? `<div class="f">${esc(CONFIG.receiptFooter)}</div>` : ""}
+</div></body></html>`;
+}
+
+$("btnConfirm").onclick = () => {
+  const t = orderTotal(), r = received();
+  if (r < t) return;
+  const html = receiptHTML(nextBillNumber(), t, r);
+  const changeMsg = "Change: " + money(r - t);
+  order = []; entry = ""; activeCat = 0;
+  renderCats(); renderOrder(); showScreen("scrMenu");
+
+  if (CONFIG.printMode === "passprnt"){
+    // Remember the change so we can show it again when PassPRNT returns here
+    try { sessionStorage.setItem("lastChange", changeMsg); } catch(_) {}
+    const back = location.origin + location.pathname;
+    let uri = "starpassprnt://v1/print/nopreview?back=" + encodeURIComponent(back) +
+              "&size=" + CONFIG.paperWidthDots + "&cut=partial" +
+              (CONFIG.openDrawer ? "&drawer=ahead" : "") +
+              "&html=" + encodeURIComponent(html);
+    location.href = uri;
+  } else if (CONFIG.printMode === "browser"){
+    const pa = $("printArea");
+    pa.innerHTML = html.replace(/^[\s\S]*<body>|<\/body>[\s\S]*$/g,"") ; pa.style.display="block";
+    const style = html.match(/<style>[\s\S]*?<\/style>/)[0].replace(/body\{/,"#printArea{");
+    pa.insertAdjacentHTML("afterbegin", style);
+    setTimeout(()=>{ window.print(); pa.style.display="none"; toast(changeMsg); }, 50);
+  } else {
+    toast(changeMsg);
+  }
+};
+
+/* ---------- Helpers ---------- */
+function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on", s.id===id)); }
+let tt; function toast(msg, err){ const t=$("toast"); t.textContent=msg; t.className="toast on"+(err?" err":""); clearTimeout(tt); tt=setTimeout(()=>t.className="toast", err?6000:3500); }
+function tick(){ $("clock").textContent = stamp(); }
+
+/* ---------- Coming back from PassPRNT ---------- */
+(function handleReturn(){
+  const p = new URLSearchParams(location.search);
+  if (!p.has("passprnt_code")) return;
+  const code = p.get("passprnt_code");
+  let last = ""; try { last = sessionStorage.getItem("lastChange") || ""; sessionStorage.removeItem("lastChange"); } catch(_) {}
+  if (code === "0") toast("Printed ✓ " + last);
+  else toast("Print failed: " + (p.get("passprnt_message") || "code " + code) + (last ? " — " + last : ""), true);
+  history.replaceState(null, "", location.pathname);
+})();
+
+/* ---------- Start ---------- */
+$("shopName").textContent = CONFIG.shopName;
+document.title = CONFIG.shopName + " — Cash";
+buildPad(); renderCats(); renderOrder(); tick(); setInterval(tick, 30000);
+</script>
+</body>
+</html>
