@@ -8,8 +8,9 @@
 <title>Cash Register</title>
 <style>
 /* =====================================================================
-   Cafe cash register — single file, no server, nothing stored online.
-   EDIT THE MENU AND SETTINGS IN THE "CONFIG" BLOCK NEAR THE BOTTOM.
+   Cafe cash register — single file, no server.
+   Menu & settings are edited in the app (gear icon) and saved ONLY in
+   this browser's local storage on the device. Nothing is sent online.
    ===================================================================== */
 :root{
   --bg:#f6f1ea; --panel:#ffffff; --ink:#1f1a17; --muted:#7a6f66; --line:#e6ddd2;
@@ -19,7 +20,8 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none}
-button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+input,select{font:inherit;color:inherit;user-select:text}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation;background:none}
 .app{display:grid;grid-template-columns:1fr 360px;height:100vh;height:100dvh}
 .screen{display:none}.screen.on{display:contents}
 
@@ -27,7 +29,12 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 .menu{display:flex;flex-direction:column;min-width:0;padding:16px 16px 0}
 .head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .head h1{font-size:22px;margin:0;letter-spacing:-.01em}
+.head-r{display:flex;align-items:center;gap:10px}
 .head small{color:var(--muted);font-size:14px}
+.gear{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--muted);
+  background:var(--panel);border:1px solid var(--line)}
+.gear svg{width:22px;height:22px}
+.gear:active{background:var(--chip)}
 .cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
 .cat{flex:none;padding:10px 18px;border-radius:999px;background:var(--chip);font-weight:600;font-size:16px}
@@ -40,14 +47,15 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 .item:active{transform:scale(.97);background:#fbf7f2}
 .item b{font-size:18px;line-height:1.2}
 .item span{color:var(--accent);font-weight:700;font-size:17px}
-.item .q{position:absolute;top:8px;right:8px;background:var(--accent);color:#fff;font-size:14px;
+.item .q{position:absolute;top:8px;right:8px;background:var(--accent);color:#fff;font-size:14px;font-style:normal;
   font-weight:700;min-width:26px;height:26px;border-radius:13px;display:grid;place-items:center;padding:0 7px}
+.hint{grid-column:1/-1;color:var(--muted);text-align:center;padding:50px 20px;font-size:17px;line-height:1.5}
 
 /* ---------- Order side panel ---------- */
 .side{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .side h2{margin:0;padding:16px 18px;font-size:18px;border-bottom:1px solid var(--line);
   display:flex;justify-content:space-between;align-items:center}
-.clear{background:none;color:var(--warn);font-size:15px;font-weight:600;padding:6px 8px}
+.clear{color:var(--warn);font-size:15px;font-weight:600;padding:6px 8px}
 .lines{flex:1;overflow-y:auto;padding:6px 0}
 .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:16px}
 .line{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 18px;border-bottom:1px solid var(--line)}
@@ -87,6 +95,74 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 .pad button{border-radius:10px;background:var(--bg);font-size:26px;font-weight:600;min-height:52px}
 .pad button:active,.quick button:active{filter:brightness(.92)}
 
+/* ---------- Settings overlay ---------- */
+.settings{position:fixed;inset:0;background:var(--bg);z-index:5;display:none;flex-direction:column}
+.settings.on{display:flex}
+.s-top{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--line)}
+.s-top h2{margin:0;font-size:20px}
+.tabs{display:flex;gap:6px;background:var(--chip);padding:4px;border-radius:12px;margin-left:8px}
+.tab{padding:9px 18px;border-radius:9px;font-weight:600;font-size:15px;color:var(--muted)}
+.tab.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.saved{margin-left:auto;font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.saved.flash{color:var(--ok)}
+.done{background:var(--ink);color:#fff;padding:11px 22px;border-radius:10px;font-weight:700;font-size:16px}
+.s-body{flex:1;min-height:0;overflow:hidden}
+.pane{display:none;height:100%}.pane.on{display:grid}
+
+/* Menu editor */
+#paneMenu{grid-template-columns:280px 1fr;gap:16px;padding:16px}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:0}
+.col-h{padding:14px 16px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em}
+.catlist{flex:1;overflow-y:auto;padding:8px}
+.sc{width:100%;display:flex;justify-content:space-between;align-items:center;padding:13px 14px;border-radius:10px;
+  text-align:left;font-weight:600;font-size:16px}
+.sc small{color:var(--muted);font-weight:500;font-size:13px}
+.sc.on{background:var(--ink);color:#fff}.sc.on small{color:#cfc6bd}
+.add{margin:8px;padding:13px;border-radius:10px;border:2px dashed var(--line);color:var(--accent);font-weight:700;font-size:16px}
+.add:active{background:var(--chip)}
+.ce-h{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.ce-h input{flex:1;font-size:20px;font-weight:700;border:1px solid transparent;border-radius:8px;padding:8px 10px;background:var(--bg)}
+.ce-h input:focus{outline:none;border-color:var(--accent);background:#fff}
+.ib{width:42px;height:42px;border-radius:10px;background:var(--chip);font-size:18px;font-weight:700;display:grid;place-items:center;flex:none}
+.ib:disabled{opacity:.3}
+.ib.del{background:#f8e3df;color:var(--warn)}
+.items{flex:1;overflow-y:auto;padding:8px 14px}
+.ir-head,.ir{display:grid;grid-template-columns:1fr 130px 42px 42px 42px;gap:8px;align-items:center}
+.ir-head{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 2px}
+.ir{padding:6px 0;border-bottom:1px solid var(--line)}
+.ir input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-size:17px;background:#fff}
+.ir input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(181,86,43,.15)}
+.price{position:relative}
+.price span{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.price input{padding-left:24px;text-align:right}
+.noitems,.nocat{color:var(--muted);text-align:center;padding:40px 20px;font-size:16px;line-height:1.5}
+
+/* General settings */
+#paneGeneral{overflow-y:auto;padding:16px;align-content:start;justify-items:center}
+.form{width:100%;max-width:640px;display:flex;flex-direction:column;gap:16px}
+.group{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px 18px}
+.group h3{margin:14px 0 4px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.field{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field label{font-weight:600;font-size:16px}
+.field label small{display:block;color:var(--muted);font-weight:400;font-size:13px;margin-top:2px}
+.field input[type=text],.field select{width:240px;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:16px;background:#fff}
+.field input.short{width:90px;text-align:center}
+.seg{display:flex;background:var(--chip);padding:3px;border-radius:10px}
+.seg button{padding:9px 14px;border-radius:8px;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.sw{position:relative;width:52px;height:30px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw i{position:absolute;inset:0;background:#d8cfc4;border-radius:15px;transition:.2s}
+.sw i:before{content:"";position:absolute;width:24px;height:24px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+i{background:var(--ok)}
+.sw input:checked+i:before{transform:translateX(22px)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:11px 16px;border-radius:10px;background:var(--chip);font-weight:600;font-size:15px}
+.btn.warn{background:#f8e3df;color:var(--warn)}
+.note{color:var(--muted);font-size:13px;line-height:1.5;padding:4px 4px 20px;text-align:center}
+
 /* ---------- Toast ---------- */
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(120px);
   background:var(--ink);color:#fff;padding:14px 22px;border-radius:12px;font-weight:600;font-size:17px;
@@ -99,6 +175,11 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
   .app{grid-template-columns:1fr;grid-template-rows:1fr auto}
   .side{border-left:0;border-top:1px solid var(--line);max-height:45vh}
   .pay{grid-template-columns:1fr;overflow-y:auto}
+  #paneMenu{grid-template-columns:1fr;grid-template-rows:auto 1fr;overflow-y:auto}
+  .catlist{max-height:200px}
+  .ir-head,.ir{grid-template-columns:1fr 100px 38px 38px 38px}
+  .saved span{display:none}
+  .field{flex-wrap:wrap}.field input[type=text],.field select{width:100%}
 }
 @media print{ body *{visibility:hidden} #printArea,#printArea *{visibility:visible} #printArea{position:absolute;top:0;left:0} }
 </style>
@@ -109,7 +190,15 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
   <!-- MENU SCREEN -->
   <div class="screen on" id="scrMenu">
     <section class="menu">
-      <div class="head"><h1 id="shopName"></h1><small id="clock"></small></div>
+      <div class="head">
+        <h1 id="shopName"></h1>
+        <div class="head-r">
+          <small id="clock"></small>
+          <button class="gear" id="btnSettings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="cats" id="cats"></div>
       <div class="grid" id="grid"></div>
     </section>
@@ -142,55 +231,128 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
     </section>
   </div>
 </div>
+
+<!-- SETTINGS -->
+<div class="settings" id="settings">
+  <div class="s-top">
+    <h2>Settings</h2>
+    <div class="tabs">
+      <button class="tab on" data-tab="paneMenu">Menu</button>
+      <button class="tab" data-tab="paneGeneral">General</button>
+    </div>
+    <div class="saved" id="savedNote">🔒 <span>Saved on this tablet only</span></div>
+    <button class="done" id="btnDone">Done</button>
+  </div>
+  <div class="s-body">
+    <div class="pane on" id="paneMenu">
+      <div class="col">
+        <div class="col-h">Categories</div>
+        <div class="catlist" id="catList"></div>
+        <button class="add" id="addCat">+ Add category</button>
+      </div>
+      <div class="col" id="catEditor"></div>
+    </div>
+    <div class="pane" id="paneGeneral">
+      <div class="form">
+        <div class="group">
+          <h3>Shop</h3>
+          <div class="field"><label for="fName">Cafe name<small>Top of the screen and receipt</small></label><input type="text" id="fName"></div>
+          <div class="field"><label for="fFooter">Receipt message<small>Printed at the bottom</small></label><input type="text" id="fFooter"></div>
+        </div>
+        <div class="group">
+          <h3>Money</h3>
+          <div class="field"><label for="fCur">Currency symbol</label><input type="text" id="fCur" class="short" maxlength="4"></div>
+          <div class="field"><label>Prices<small>Use cents or whole numbers only</small></label>
+            <div class="seg" id="fDec"><button data-v="2">With cents · 4.50</button><button data-v="0">No cents · 450</button></div></div>
+          <div class="field"><label for="fCash">Quick cash buttons<small>Bill amounts, separated by commas</small></label><input type="text" id="fCash" inputmode="decimal"></div>
+        </div>
+        <div class="group">
+          <h3>Printer</h3>
+          <div class="field"><label for="fPrint">Printing<small>PassPRNT for the Bluetooth printer</small></label>
+            <select id="fPrint"><option value="passprnt">Star PassPRNT (tablet)</option><option value="browser">Print dialog (computer)</option><option value="none">Don't print</option></select></div>
+          <div class="field"><label for="fDrawer">Open cash drawer<small>Only if a drawer is plugged into the printer</small></label>
+            <label class="sw"><input type="checkbox" id="fDrawer"><i></i></label></div>
+        </div>
+        <div class="group">
+          <h3>Backup</h3>
+          <div class="field"><label>Menu backup<small>Saves a file to this tablet's Downloads</small></label>
+            <div class="btnrow"><button class="btn" id="btnExport">Download</button><button class="btn" id="btnImport">Restore</button></div></div>
+          <div class="field"><label>Start over<small>Restores the original sample menu</small></label>
+            <button class="btn warn" id="btnReset">Reset</button></div>
+        </div>
+        <div class="note">Everything here is stored only in this browser on this tablet. Nothing is sent online.<br>
+          Clearing Chrome's data or using another device will start from the sample menu, so keep a backup.</div>
+        <input type="file" id="fileImport" accept=".json,application/json" hidden>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="printArea" style="display:none"></div>
 
 <script>
 /* =====================================================================
-   CONFIG — edit this part only
+   DEFAULTS — used the first time, or after "Reset" in Settings.
+   Day-to-day changes are made in the app via the gear icon.
    ===================================================================== */
-const CONFIG = {
-  shopName: "Cafe",                 // shown at top of the screen and receipt
+const DEFAULTS = {
+  shopName: "Cafe",
   currencySymbol: "$",
-  decimals: 2,                      // 0 for currencies without cents (e.g. pesos)
-  cashButtons: [5, 10, 20, 50, 100],// quick-add bill buttons on the payment screen
-
-  // Printing:
-  //  "passprnt" -> Star PassPRNT app (Android tablet + Bluetooth TSP100). No preview.
-  //  "browser"  -> normal print dialog (for testing on a computer)
-  //  "none"     -> don't print at all
-  printMode: "passprnt",
-  paperWidthDots: 576,              // 576 = 80mm paper on TSP100III
-  openDrawer: false,                // true if a cash drawer is plugged into the printer
+  decimals: 2,                        // 2 = with cents, 0 = whole numbers only
+  cashButtons: [5, 10, 20, 50, 100],
+  printMode: "passprnt",              // "passprnt" | "browser" | "none"
+  paperWidthDots: 576,                // 576 = 80mm paper on TSP100III
+  openDrawer: false,
   receiptFooter: "Thank you!",
-
-  // MENU — categories and items. Prices in normal units (3.5 = $3.50).
   menu: [
     { category: "Coffee", items: [
-      { name: "Espresso",      price: 3.00 },
-      { name: "Americano",     price: 3.50 },
-      { name: "Cappuccino",    price: 4.50 },
-      { name: "Latte",         price: 4.75 },
-      { name: "Drip Coffee",   price: 2.75 },
+      { name: "Espresso", price: 3.00 }, { name: "Americano", price: 3.50 },
+      { name: "Cappuccino", price: 4.50 }, { name: "Latte", price: 4.75 },
+      { name: "Drip Coffee", price: 2.75 },
     ]},
     { category: "Food", items: [
-      { name: "Tostones",      price: 5.00 },
-      { name: "Empanada",      price: 3.50 },
-      { name: "Croissant",     price: 3.25 },
-      { name: "Sandwich",      price: 8.50 },
+      { name: "Tostones", price: 5.00 }, { name: "Empanada", price: 3.50 },
+      { name: "Croissant", price: 3.25 }, { name: "Sandwich", price: 8.50 },
     ]},
     { category: "Drinks", items: [
-      { name: "Juice",         price: 4.00 },
-      { name: "Soda",          price: 2.50 },
-      { name: "Water",         price: 2.00 },
+      { name: "Juice", price: 4.00 }, { name: "Soda", price: 2.50 }, { name: "Water", price: 2.00 },
     ]},
   ],
 };
-/* ===================================================================== */
+
+/* ---------- Device-only settings storage ---------- */
+const STORE_KEY = "cafeSettings.v1";
+const clone = o => JSON.parse(JSON.stringify(o));
+function normalize(s){
+  const d = clone(DEFAULTS), out = Object.assign(d, s || {});
+  out.decimals = +out.decimals === 0 ? 0 : 2;
+  out.cashButtons = (Array.isArray(out.cashButtons) ? out.cashButtons : d.cashButtons).map(Number).filter(n => n > 0);
+  out.menu = (Array.isArray(out.menu) ? out.menu : []).map(c => ({
+    category: String(c?.category ?? "Category"),
+    items: (Array.isArray(c?.items) ? c.items : []).map(i => ({ name: String(i?.name ?? ""), price: +i?.price || 0 })),
+  }));
+  return out;
+}
+function loadSettings(){
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) return normalize(JSON.parse(raw)); } catch(_) {}
+  return normalize(null);
+}
+let storageOK = true;
+function saveSettings(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(CONFIG)); storageOK = true; }
+  catch(_) { storageOK = false; }
+  const n = $("savedNote");
+  if (!storageOK){ n.classList.remove("flash"); n.innerHTML = "⚠️ <span>Can't save on this browser</span>"; return; }
+  n.classList.add("flash"); n.innerHTML = "✓ <span>Saved on this tablet</span>";
+  clearTimeout(saveSettings.t);
+  saveSettings.t = setTimeout(() => { n.classList.remove("flash"); n.innerHTML = "🔒 <span>Saved on this tablet only</span>"; }, 1400);
+}
+let CONFIG = loadSettings();
 
 const $ = id => document.getElementById(id);
-const scale = Math.pow(10, CONFIG.decimals);
-const toCents = v => Math.round(v * scale);           // all math in integer cents
+let scale = 100;
+const toCents = v => Math.round(v * scale);           // all money math in integer cents
 const money = c => CONFIG.currencySymbol + (c / scale).toLocaleString("en-US",
   {minimumFractionDigits: CONFIG.decimals, maximumFractionDigits: CONFIG.decimals});
 const esc = s => String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -202,12 +364,18 @@ let entry = "";            // typed cash amount, as a string
 
 /* ---------- Menu ---------- */
 function renderCats(){
+  activeCat = Math.max(0, Math.min(activeCat, CONFIG.menu.length - 1));
   $("cats").innerHTML = CONFIG.menu.map((c,i) =>
     `<button class="cat ${i===activeCat?"on":""}" data-i="${i}">${esc(c.category)}</button>`).join("");
 }
 function renderGrid(){
   const cat = CONFIG.menu[activeCat];
-  $("grid").innerHTML = cat.items.map((it,i) => {
+  const items = cat ? cat.items.map((it,i) => ({it,i})).filter(x => x.it.name.trim()) : [];
+  if (!items.length){
+    $("grid").innerHTML = `<div class="hint">${cat ? "No items in this category yet." : "Your menu is empty."}<br>Tap the ⚙ gear to add some.</div>`;
+    return;
+  }
+  $("grid").innerHTML = items.map(({it,i}) => {
     const line = order.find(l => l.name === it.name);
     return `<button class="item" data-i="${i}">
       ${line ? `<i class="q">${line.qty}</i>` : ""}
@@ -260,7 +428,7 @@ function buildPad(){
   const keys = ["1","2","3","4","5","6","7","8","9", CONFIG.decimals ? "." : "00","0","⌫"];
   $("pad").innerHTML = keys.map(k=>`<button data-k="${k}">${k}</button>`).join("");
   $("quick").innerHTML = `<button class="exact" data-q="exact">Exact</button>` +
-    CONFIG.cashButtons.map(v=>`<button data-q="${v}">+${CONFIG.currencySymbol}${v}</button>`).join("");
+    CONFIG.cashButtons.map(v=>`<button data-q="${v}">+${esc(CONFIG.currencySymbol)}${v}</button>`).join("");
 }
 $("pad").onclick = e => {
   const k = e.target.closest("button")?.dataset.k; if(!k) return;
@@ -348,17 +516,15 @@ $("btnConfirm").onclick = () => {
   renderCats(); renderOrder(); showScreen("scrMenu");
 
   if (CONFIG.printMode === "passprnt"){
-    // Remember the change so we can show it again when PassPRNT returns here
     try { sessionStorage.setItem("lastChange", changeMsg); } catch(_) {}
     const back = location.origin + location.pathname;
-    let uri = "starpassprnt://v1/print/nopreview?back=" + encodeURIComponent(back) +
-              "&size=" + CONFIG.paperWidthDots + "&cut=partial" +
-              (CONFIG.openDrawer ? "&drawer=ahead" : "") +
-              "&html=" + encodeURIComponent(html);
-    location.href = uri;
+    location.href = "starpassprnt://v1/print/nopreview?back=" + encodeURIComponent(back) +
+      "&size=" + CONFIG.paperWidthDots + "&cut=partial" +
+      (CONFIG.openDrawer ? "&drawer=ahead" : "") +
+      "&html=" + encodeURIComponent(html);
   } else if (CONFIG.printMode === "browser"){
     const pa = $("printArea");
-    pa.innerHTML = html.replace(/^[\s\S]*<body>|<\/body>[\s\S]*$/g,"") ; pa.style.display="block";
+    pa.innerHTML = html.replace(/^[\s\S]*<body>|<\/body>[\s\S]*$/g,""); pa.style.display="block";
     const style = html.match(/<style>[\s\S]*?<\/style>/)[0].replace(/body\{/,"#printArea{");
     pa.insertAdjacentHTML("afterbegin", style);
     setTimeout(()=>{ window.print(); pa.style.display="none"; toast(changeMsg); }, 50);
@@ -367,7 +533,187 @@ $("btnConfirm").onclick = () => {
   }
 };
 
+/* =====================================================================
+   SETTINGS
+   ===================================================================== */
+let setCat = 0;
+const S = {
+  open(){
+    setCat = Math.max(0, Math.min(activeCat, CONFIG.menu.length - 1));
+    S.renderMenuEditor(); S.fillGeneral();
+    $("settings").classList.add("on");
+  },
+  close(){
+    // drop blank items so they don't appear on the register
+    CONFIG.menu.forEach(c => c.items = c.items.filter(i => i.name.trim()));
+    saveSettings();
+    $("settings").classList.remove("on");
+    applySettings();
+  },
+  renderCatList(){
+    $("catList").innerHTML = CONFIG.menu.length ? CONFIG.menu.map((c,i) =>
+      `<button class="sc ${i===setCat?"on":""}" data-sc="${i}"><span>${esc(c.category) || "<em>Untitled</em>"}</span><small>${c.items.length}</small></button>`).join("")
+      : `<div class="nocat">No categories yet</div>`;
+  },
+  renderMenuEditor(){
+    S.renderCatList();
+    const ed = $("catEditor"), c = CONFIG.menu[setCat];
+    if (!c){ ed.innerHTML = `<div class="nocat">Add a category to start building the menu<br>(for example: Coffee, Food, Drinks).</div>`; return; }
+    const n = CONFIG.menu.length, sym = esc(CONFIG.currencySymbol);
+    ed.innerHTML = `
+      <div class="ce-h">
+        <input id="catName" value="${esc(c.category)}" placeholder="Category name" aria-label="Category name">
+        <button class="ib" data-cmove="-1" ${setCat===0?"disabled":""} aria-label="Move up">↑</button>
+        <button class="ib" data-cmove="1" ${setCat===n-1?"disabled":""} aria-label="Move down">↓</button>
+        <button class="ib del" id="delCat" aria-label="Delete category">✕</button>
+      </div>
+      <div class="items">
+        ${c.items.length ? `<div class="ir-head"><span>Item</span><span style="text-align:right">Price</span><span></span><span></span><span></span></div>` : ""}
+        ${c.items.map((it,i)=>`
+          <div class="ir">
+            <input data-f="name" data-ii="${i}" value="${esc(it.name)}" placeholder="Item name">
+            <div class="price"><span>${sym}</span><input data-f="price" data-ii="${i}" type="text" inputmode="decimal"
+              value="${it.price ? it.price.toFixed(CONFIG.decimals) : ""}" placeholder="0"></div>
+            <button class="ib" data-imove="-1" data-ii="${i}" ${i===0?"disabled":""} aria-label="Move up">↑</button>
+            <button class="ib" data-imove="1" data-ii="${i}" ${i===c.items.length-1?"disabled":""} aria-label="Move down">↓</button>
+            <button class="ib del" data-idel="${i}" aria-label="Delete item">✕</button>
+          </div>`).join("")}
+        ${c.items.length ? "" : `<div class="noitems">No items in “${esc(c.category)}” yet.</div>`}
+      </div>
+      <button class="add" id="addItem">+ Add item</button>`;
+  },
+  focusLast(){
+    const ins = $("catEditor").querySelectorAll('[data-f="name"]');
+    const el = ins[ins.length-1]; if (el){ el.focus(); el.scrollIntoView({block:"nearest"}); }
+  },
+  fillGeneral(){
+    $("fName").value = CONFIG.shopName;
+    $("fFooter").value = CONFIG.receiptFooter;
+    $("fCur").value = CONFIG.currencySymbol;
+    $("fCash").value = CONFIG.cashButtons.join(", ");
+    $("fPrint").value = CONFIG.printMode;
+    $("fDrawer").checked = !!CONFIG.openDrawer;
+    $("fDec").querySelectorAll("button").forEach(b => b.classList.toggle("on", +b.dataset.v === CONFIG.decimals));
+  },
+};
+
+$("btnSettings").onclick = S.open;
+$("btnDone").onclick = S.close;
+document.querySelector(".tabs").onclick = e => {
+  const t = e.target.closest(".tab"); if(!t) return;
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x===t));
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id===t.dataset.tab));
+  if (t.dataset.tab === "paneMenu") S.renderMenuEditor();
+};
+
+/* Category list */
+$("catList").onclick = e => { const b=e.target.closest("[data-sc]"); if(!b) return; setCat=+b.dataset.sc; S.renderMenuEditor(); };
+$("addCat").onclick = () => {
+  CONFIG.menu.push({category: "", items: []}); setCat = CONFIG.menu.length - 1;
+  saveSettings(); S.renderMenuEditor(); $("catName").focus();
+};
+
+/* Category editor (delegated) */
+$("catEditor").addEventListener("input", e => {
+  const c = CONFIG.menu[setCat], el = e.target;
+  if (el.id === "catName"){ c.category = el.value; S.renderCatList(); saveSettings(); return; }
+  const i = +el.dataset.ii;
+  if (el.dataset.f === "name"){ c.items[i].name = el.value; saveSettings(); }
+  if (el.dataset.f === "price"){
+    el.value = el.value.replace(/[^0-9.]/g,"");
+    const v = parseFloat(el.value); c.items[i].price = isNaN(v) ? 0 : v; saveSettings();
+  }
+});
+$("catEditor").addEventListener("change", e => {   // tidy price formatting when leaving the field
+  const el = e.target; if (el.dataset.f !== "price") return;
+  const it = CONFIG.menu[setCat].items[+el.dataset.ii];
+  el.value = it.price ? it.price.toFixed(CONFIG.decimals) : "";
+});
+$("catEditor").addEventListener("keydown", e => {   // Enter on a price jumps to a new item
+  if (e.key !== "Enter") return;
+  const el = e.target;
+  if (el.id === "catName"){ el.blur(); return; }
+  if (el.dataset.f === "name"){ el.closest(".ir").querySelector('[data-f="price"]').focus(); e.preventDefault(); }
+  else if (el.dataset.f === "price"){ el.blur(); $("addItem").click(); e.preventDefault(); }
+});
+$("catEditor").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  const menu = CONFIG.menu, c = menu[setCat];
+  if (b.id === "addItem"){ c.items.push({name:"", price:0}); saveSettings(); S.renderMenuEditor(); S.focusLast(); return; }
+  if (b.id === "delCat"){
+    const label = c.category || "this category";
+    if (!confirm(`Delete “${label}” and its ${c.items.length} item(s)?`)) return;
+    menu.splice(setCat,1); setCat = Math.max(0, setCat-1); saveSettings(); S.renderMenuEditor(); return;
+  }
+  if (b.dataset.cmove){
+    const j = setCat + +b.dataset.cmove; if (j<0 || j>=menu.length) return;
+    [menu[setCat], menu[j]] = [menu[j], menu[setCat]]; setCat = j; saveSettings(); S.renderMenuEditor(); return;
+  }
+  if (b.dataset.imove){
+    const i = +b.dataset.ii, j = i + +b.dataset.imove; if (j<0 || j>=c.items.length) return;
+    [c.items[i], c.items[j]] = [c.items[j], c.items[i]]; saveSettings(); S.renderMenuEditor(); return;
+  }
+  if (b.dataset.idel !== undefined){
+    const i = +b.dataset.idel, it = c.items[i];
+    if (it.name.trim() && !confirm(`Delete “${it.name}”?`)) return;
+    c.items.splice(i,1); saveSettings(); S.renderMenuEditor();
+  }
+});
+
+/* General settings */
+$("fName").oninput    = e => { CONFIG.shopName = e.target.value; saveSettings(); };
+$("fFooter").oninput  = e => { CONFIG.receiptFooter = e.target.value; saveSettings(); };
+$("fCur").oninput     = e => { CONFIG.currencySymbol = e.target.value; saveSettings(); };
+$("fPrint").onchange  = e => { CONFIG.printMode = e.target.value; saveSettings(); };
+$("fDrawer").onchange = e => { CONFIG.openDrawer = e.target.checked; saveSettings(); };
+$("fCash").onchange   = e => {
+  const v = e.target.value.split(/[,\s]+/).map(Number).filter(n => n > 0);
+  CONFIG.cashButtons = v.length ? v.slice(0,8) : clone(DEFAULTS.cashButtons);
+  e.target.value = CONFIG.cashButtons.join(", "); saveSettings();
+};
+$("fDec").onclick = e => {
+  const b = e.target.closest("button"); if(!b) return;
+  CONFIG.decimals = +b.dataset.v; saveSettings(); S.fillGeneral(); applySettings();
+};
+
+/* Backup / restore / reset — all local files, nothing uploaded */
+$("btnExport").onclick = () => {
+  const blob = new Blob([JSON.stringify(CONFIG, null, 2)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "cafe-menu-backup-" + new Date().toISOString().slice(0,10) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast("Backup saved to Downloads");
+};
+$("btnImport").onclick = () => $("fileImport").click();
+$("fileImport").onchange = e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const data = JSON.parse(rd.result);
+      if (!Array.isArray(data.menu)) throw 0;
+      if (!confirm("Replace the current menu and settings with this backup?")) return;
+      CONFIG = normalize(data); setCat = 0; saveSettings(); applySettings();
+      S.renderMenuEditor(); S.fillGeneral(); toast("Backup restored");
+    } catch(_) { toast("That file isn't a valid menu backup", true); }
+  };
+  rd.readAsText(f);
+};
+$("btnReset").onclick = () => {
+  if (!confirm("Erase your menu and settings and go back to the sample menu?")) return;
+  CONFIG = normalize(null); setCat = 0; saveSettings(); applySettings();
+  S.renderMenuEditor(); S.fillGeneral(); toast("Reset to sample menu");
+};
+
 /* ---------- Helpers ---------- */
+function applySettings(){
+  scale = Math.pow(10, CONFIG.decimals);
+  $("shopName").textContent = CONFIG.shopName;
+  document.title = (CONFIG.shopName || "Cafe") + " — Cash";
+  buildPad(); renderCats(); renderOrder();
+}
 function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on", s.id===id)); }
 let tt; function toast(msg, err){ const t=$("toast"); t.textContent=msg; t.className="toast on"+(err?" err":""); clearTimeout(tt); tt=setTimeout(()=>t.className="toast", err?6000:3500); }
 function tick(){ $("clock").textContent = stamp(); }
@@ -384,9 +730,9 @@ function tick(){ $("clock").textContent = stamp(); }
 })();
 
 /* ---------- Start ---------- */
-$("shopName").textContent = CONFIG.shopName;
-document.title = CONFIG.shopName + " — Cash";
-buildPad(); renderCats(); renderOrder(); tick(); setInterval(tick, 30000);
+// Ask the browser not to auto-clear our storage (best effort; harmless if refused)
+try { navigator.storage?.persist?.(); } catch(_) {}
+applySettings(); tick(); setInterval(tick, 30000);
 </script>
 </body>
 </html>
