@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -9,12 +9,12 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Cash Register</title>
+<title>Caja</title>
 <script>
-/* Apply the saved theme before the page paints (avoids a white flash in dark mode) */
-try{var t=(JSON.parse(localStorage.getItem("cafeSettings.v1")||"{}").theme)||"auto";
-if(t==="auto")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
-document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}
+/* Apply the saved theme before the page paints (avoids a flash) */
+(function(){try{var th=(JSON.parse(localStorage.getItem("cafeSettings.v2")||"{}").theme)||"light";
+if(th==="auto")th=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
+document.documentElement.dataset.theme=th;}catch(e){document.documentElement.dataset.theme="light";}})();
 </script>
 <style>
 /* =====================================================================
@@ -95,11 +95,13 @@ svg{display:block}
 .line{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:12px 18px;border-bottom:1px solid var(--line)}
 .line .n{font-weight:600;font-size:16px}
 .line .p{font-weight:700;font-size:16px;text-align:right;font-variant-numeric:tabular-nums}
+.line .nt{grid-column:1/-1;font-size:14px;color:var(--accent);font-weight:600;margin-top:-2px}
 .qty{display:flex;align-items:center;gap:6px;grid-column:1/-1}
 .qty button{width:42px;height:38px;border-radius:10px;background:var(--chip);color:var(--chip-ink);font-size:20px;font-weight:700}
 .qty button:active{filter:brightness(.9)}
+.qty .notebtn{width:auto;padding:0 12px;font-size:14px;margin-left:auto}
 .qty em{font-style:normal;min-width:30px;text-align:center;font-weight:700;font-size:17px}
-.qty small{color:var(--muted);margin-left:auto;font-size:14px}
+.qty small{color:var(--muted);font-size:13px;margin-left:6px}
 .foot{padding:16px 18px 18px;border-top:1px solid var(--line)}
 .tot{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
 .tot span{color:var(--muted);font-size:16px}
@@ -114,11 +116,17 @@ svg{display:block}
 .pay{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 18px;min-height:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;
   display:flex;flex-direction:column;min-height:0;box-shadow:var(--shadow)}
-.back{align-self:flex-start;background:var(--chip);color:var(--chip-ink);padding:11px 16px;border-radius:10px;font-weight:600;margin-bottom:14px}
-.row{display:flex;justify-content:space-between;align-items:baseline;padding:12px 2px;border-bottom:1px solid var(--line)}
-.row span{color:var(--muted);font-size:18px}
-.row b{font-size:30px;font-variant-numeric:tabular-nums}
-.change{margin-top:14px;border-radius:14px;padding:18px;background:var(--ok-soft);display:flex;justify-content:space-between;align-items:center;transition:background .2s}
+.paytop{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.back{background:var(--chip);color:var(--chip-ink);padding:11px 16px;border-radius:10px;font-weight:600}
+.discbtn{padding:11px 16px;border-radius:10px;font-weight:700;border:2px dashed var(--line);color:var(--accent)}
+.discbtn.on{border-style:solid;border-color:var(--accent);background:var(--accent-soft)}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:11px 2px;border-bottom:1px solid var(--line)}
+.row span{color:var(--muted);font-size:17px}
+.row b{font-size:28px;font-variant-numeric:tabular-nums}
+.row.sm b{font-size:20px;font-weight:600}
+.row.disc b{color:var(--accent)}
+.row[hidden]{display:none}
+.change{margin-top:14px;border-radius:14px;padding:18px;background:var(--ok-soft);display:flex;justify-content:space-between;align-items:center}
 .change span{font-size:18px;font-weight:600;color:var(--ok)}
 .change b{font-size:52px;color:var(--ok);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .change.short{background:var(--warn-soft)}
@@ -126,6 +134,7 @@ svg{display:block}
 .change.short b{font-size:34px}
 .summary{flex:1;overflow-y:auto;margin-top:14px;font-size:15px;color:var(--muted)}
 .summary div{display:flex;justify-content:space-between;padding:5px 2px}
+.summary i{display:block;font-style:normal;color:var(--accent);font-size:13px;padding:0 2px 4px 18px}
 .display{font-size:46px;font-weight:700;text-align:right;padding:10px 14px;background:var(--bg);
   border-radius:12px;margin-bottom:12px;min-height:74px;font-variant-numeric:tabular-nums}
 .display small{font-size:24px;color:var(--muted);margin-right:4px;font-weight:600}
@@ -135,6 +144,31 @@ svg{display:block}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;margin-bottom:12px}
 .pad button{border-radius:11px;background:var(--bg);font-size:27px;font-weight:600;min-height:52px}
 .pad button:active,.quick button:active{filter:brightness(.9)}
+
+/* ---------- Modal ---------- */
+.modal{position:fixed;inset:0;z-index:8;background:rgba(20,14,8,.45);display:none;align-items:center;justify-content:center;padding:20px}
+.modal.on{display:flex}
+.sheet{background:var(--panel);border-radius:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);padding:22px}
+.sheet h3{margin:0 0 4px;font-size:21px}
+.sheet .sub{color:var(--muted);font-size:14px;margin-bottom:16px}
+.sheet input[type=text]{width:100%;border:1px solid var(--line);border-radius:11px;padding:14px;font-size:18px;background:var(--field)}
+.sheet input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.chips button{padding:10px 14px;border-radius:999px;background:var(--chip);color:var(--chip-ink);font-weight:600;font-size:15px}
+.chips button.on{background:var(--accent);color:var(--accent-ink)}
+.preview{margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--bg);display:flex;justify-content:space-between;font-size:16px}
+.preview b{font-variant-numeric:tabular-nums}
+.actions{display:flex;gap:8px;margin-top:20px}
+.actions button{flex:1;padding:15px;border-radius:12px;font-weight:700;font-size:16px;background:var(--chip);color:var(--chip-ink)}
+.actions .primary{background:var(--accent);color:var(--accent-ink)}
+.actions .danger{background:var(--warn-soft);color:var(--warn);flex:none}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 4px}
+.stat{background:var(--bg);border-radius:14px;padding:14px 16px}
+.stat span{display:block;color:var(--muted);font-size:13px;font-weight:600;margin-bottom:4px}
+.stat b{font-size:26px;font-variant-numeric:tabular-nums}
+.stat.wide{grid-column:1/-1;background:var(--ok-soft)}
+.stat.wide b{color:var(--ok);font-size:34px}
 
 /* ---------- Settings overlay ---------- */
 .settings{position:fixed;inset:0;background:var(--bg);z-index:5;display:none;flex-direction:column}
@@ -179,14 +213,14 @@ svg{display:block}
 .noitems,.nocat{color:var(--muted);text-align:center;padding:40px 20px;font-size:16px;line-height:1.5}
 
 #paneGeneral{overflow-y:auto;padding:16px;align-content:start;justify-items:center}
-.form{width:100%;max-width:660px;display:flex;flex-direction:column;gap:16px}
+.form{width:100%;max-width:680px;display:flex;flex-direction:column;gap:16px}
 .group{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px 18px}
 .group h3{margin:14px 0 4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .field{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
 .field:last-child{border-bottom:0}
 .field>label:first-child,.field>.lbl{font-weight:600;font-size:16px}
 .field small{display:block;color:var(--muted);font-weight:400;font-size:13px;margin-top:2px}
-.field input[type=text],.field select{width:250px;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:16px;background:var(--field)}
+.field input[type=text],.field select{width:260px;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:16px;background:var(--field)}
 .field input.short{width:90px;text-align:center}
 .seg{display:flex;background:var(--chip);padding:3px;border-radius:10px;flex:none}
 .seg button{padding:9px 14px;border-radius:8px;font-weight:600;font-size:14px;color:var(--muted)}
@@ -236,14 +270,17 @@ svg{display:block}
         </div>
         <div class="head-r">
           <span class="clock" id="clock"></span>
-          <button class="ibtn" id="btnReprint" aria-label="Reprint last receipt" title="Reprint last receipt" hidden>
+          <button class="ibtn" id="btnReprint" aria-label="Reprint" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           </button>
-          <button class="ibtn" id="btnTheme" aria-label="Switch light or dark mode" title="Light / dark mode">
+          <button class="ibtn" id="btnToday" aria-label="Today">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+          </button>
+          <button class="ibtn" id="btnTheme" aria-label="Light / dark">
             <svg id="icoSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
             <svg id="icoMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
-          <button class="ibtn" id="btnSettings" aria-label="Settings" title="Settings">
+          <button class="ibtn" id="btnSettings" aria-label="Settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
         </div>
@@ -253,13 +290,13 @@ svg{display:block}
     </section>
     <aside class="side">
       <div class="side-h">
-        <h2>Order <span class="badge" id="itemCount">0</span></h2>
-        <button class="clear" id="btnClear" disabled>Clear</button>
+        <h2><span data-t="order"></span> <span class="badge" id="itemCount">0</span></h2>
+        <button class="clear" id="btnClear" data-t="clear" disabled></button>
       </div>
       <div class="lines" id="lines"></div>
       <div class="foot">
-        <div class="tot"><span>Total</span><b id="total">$0</b></div>
-        <button class="big" id="btnPay" disabled>Charge</button>
+        <div class="tot"><span data-t="total"></span><b id="total">$0</b></div>
+        <button class="big" id="btnPay" data-t="charge" disabled></button>
       </div>
     </aside>
   </div>
@@ -268,17 +305,22 @@ svg{display:block}
   <div class="screen" id="scrPay">
     <section class="pay">
       <div class="card">
-        <button class="back" id="btnBack">← Back to order</button>
-        <div class="row"><span>Total</span><b id="payTotal"></b></div>
-        <div class="row"><span>Cash received</span><b id="payRecv"></b></div>
-        <div class="change" id="changeRow"><span id="changeLbl">Change</span><b id="payChange"></b></div>
+        <div class="paytop">
+          <button class="back" id="btnBack" data-t="back"></button>
+          <button class="discbtn" id="btnDisc"></button>
+        </div>
+        <div class="row sm" id="rowSub" hidden><span data-t="subtotal"></span><b id="paySub"></b></div>
+        <div class="row sm disc" id="rowDisc" hidden><span id="discLbl"></span><b id="payDisc"></b></div>
+        <div class="row"><span data-t="total"></span><b id="payTotal"></b></div>
+        <div class="row"><span data-t="cashReceived"></span><b id="payRecv"></b></div>
+        <div class="change" id="changeRow"><span id="changeLbl"></span><b id="payChange"></b></div>
         <div class="summary" id="paySummary"></div>
       </div>
       <div class="card">
         <div class="display" id="display">0</div>
         <div class="quick" id="quick"></div>
         <div class="pad" id="pad"></div>
-        <button class="big ok" id="btnConfirm" disabled>Confirm &amp; Print</button>
+        <button class="big ok" id="btnConfirm" data-t="confirm" disabled></button>
       </div>
     </section>
   </div>
@@ -287,118 +329,215 @@ svg{display:block}
 <!-- SETTINGS -->
 <div class="settings" id="settings">
   <div class="s-top">
-    <h2>Settings</h2>
+    <h2 data-t="settings"></h2>
     <div class="tabs">
-      <button class="tab on" data-tab="paneMenu">Menu</button>
-      <button class="tab" data-tab="paneGeneral">General</button>
+      <button class="tab on" data-tab="paneMenu" data-t="tabMenu"></button>
+      <button class="tab" data-tab="paneGeneral" data-t="tabGeneral"></button>
     </div>
-    <div class="saved" id="savedNote">🔒 <span>Saved on this tablet only</span></div>
-    <button class="done" id="btnDone">Done</button>
+    <div class="saved" id="savedNote"></div>
+    <button class="done" id="btnDone" data-t="done"></button>
   </div>
   <div class="s-body">
     <div class="pane on" id="paneMenu">
       <div class="col">
-        <div class="col-h">Categories</div>
+        <div class="col-h" data-t="categories"></div>
         <div class="catlist" id="catList"></div>
-        <button class="add" id="addCat">+ Add category</button>
+        <button class="add" id="addCat" data-t="addCat"></button>
       </div>
       <div class="col" id="catEditor"></div>
     </div>
     <div class="pane" id="paneGeneral">
       <div class="form">
         <div class="group">
-          <h3>Shop</h3>
-          <div class="field"><label for="fName">Cafe name<small>Top of the screen and receipt</small></label><input type="text" id="fName"></div>
-          <div class="field"><label for="fFooter">Receipt message<small>Printed at the bottom</small></label><input type="text" id="fFooter"></div>
+          <h3 data-t="gShop"></h3>
+          <div class="field"><label for="fName"><span data-t="cafeName"></span><small data-t="cafeNameSub"></small></label><input type="text" id="fName"></div>
+          <div class="field"><label for="fFooter"><span data-t="receiptMsg"></span><small data-t="receiptMsgSub"></small></label><input type="text" id="fFooter"></div>
+          <div class="field"><label for="fNotes"><span data-t="quickNotes"></span><small data-t="quickNotesSub"></small></label><input type="text" id="fNotes"></div>
         </div>
         <div class="group">
-          <h3>Screen</h3>
-          <div class="field"><div class="lbl">Appearance<small>Auto follows the tablet's setting</small></div>
-            <div class="seg" id="fTheme"><button data-v="auto">Auto</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
-          <div class="field"><label for="fAwake">Keep screen on<small>Stops the tablet from sleeping while the register is open</small></label>
+          <h3 data-t="gScreen"></h3>
+          <div class="field"><div class="lbl"><span data-t="language"></span></div>
+            <div class="seg" id="fLang"><button data-v="es">Español</button><button data-v="en">English</button></div></div>
+          <div class="field"><div class="lbl"><span data-t="appearance"></span><small data-t="appearanceSub"></small></div>
+            <div class="seg" id="fTheme"><button data-v="auto" data-t="auto"></button><button data-v="light" data-t="light"></button><button data-v="dark" data-t="dark"></button></div></div>
+          <div class="field"><label for="fAwake"><span data-t="keepAwake"></span><small data-t="keepAwakeSub"></small></label>
             <label class="sw"><input type="checkbox" id="fAwake"><i></i></label></div>
-          <div class="field"><label for="fVibe">Tap vibration<small>Short buzz when adding items</small></label>
+          <div class="field"><label for="fVibe"><span data-t="vibe"></span><small data-t="vibeSub"></small></label>
             <label class="sw"><input type="checkbox" id="fVibe"><i></i></label></div>
         </div>
         <div class="group">
-          <h3>Money</h3>
-          <div class="field"><label for="fCur">Currency symbol</label><input type="text" id="fCur" class="short" maxlength="4"></div>
-          <div class="field"><div class="lbl">Prices<small>Use cents or whole numbers only</small></div>
-            <div class="seg" id="fDec"><button data-v="2">With cents · 4.50</button><button data-v="0">No cents · 450</button></div></div>
-          <div class="field"><label for="fCash">Quick cash buttons<small>Bill amounts, separated by commas</small></label><input type="text" id="fCash" inputmode="decimal"></div>
+          <h3 data-t="gMoney"></h3>
+          <div class="field"><label for="fCur"><span data-t="currency"></span></label><input type="text" id="fCur" class="short" maxlength="4"></div>
+          <div class="field"><div class="lbl"><span data-t="prices"></span><small data-t="pricesSub"></small></div>
+            <div class="seg" id="fDec"><button data-v="2" data-t="withCents"></button><button data-v="0" data-t="noCents"></button></div></div>
+          <div class="field"><label for="fCash"><span data-t="quickCash"></span><small data-t="quickCashSub"></small></label><input type="text" id="fCash" inputmode="decimal"></div>
         </div>
         <div class="group">
-          <h3>Printer</h3>
-          <div class="field"><label for="fPrint">Printing<small>PassPRNT for the Bluetooth printer</small></label>
-            <select id="fPrint"><option value="passprnt">Star PassPRNT (tablet)</option><option value="browser">Print dialog (computer)</option><option value="none">Don't print</option></select></div>
-          <div class="field"><label for="fDrawer">Open cash drawer<small>Only if a drawer is plugged into the printer</small></label>
+          <h3 data-t="gPrinter"></h3>
+          <div class="field"><label for="fPrint"><span data-t="printing"></span><small data-t="printingSub"></small></label>
+            <select id="fPrint"><option value="passprnt" data-t="optPass"></option><option value="browser" data-t="optBrowser"></option><option value="none" data-t="optNone"></option></select></div>
+          <div class="field"><label for="fDrawer"><span data-t="drawer"></span><small data-t="drawerSub"></small></label>
             <label class="sw"><input type="checkbox" id="fDrawer"><i></i></label></div>
         </div>
         <div class="group">
-          <h3>Backup</h3>
-          <div class="field"><div class="lbl">Menu backup<small>Saves a file to this tablet's Downloads</small></div>
-            <div class="btnrow"><button class="btn" id="btnExport">Download</button><button class="btn" id="btnImport">Restore</button></div></div>
-          <div class="field"><div class="lbl">Start over<small>Restores the example menu</small></div>
-            <button class="btn warn" id="btnReset">Reset</button></div>
+          <h3 data-t="gBackup"></h3>
+          <div class="field"><div class="lbl"><span data-t="menuBackup"></span><small data-t="menuBackupSub"></small></div>
+            <div class="btnrow"><button class="btn" id="btnExport" data-t="download"></button><button class="btn" id="btnImport" data-t="restore"></button></div></div>
+          <div class="field"><div class="lbl"><span data-t="startOver"></span><small data-t="startOverSub"></small></div>
+            <button class="btn warn" id="btnReset" data-t="reset"></button></div>
         </div>
-        <div class="note">Everything here is stored only in this browser on this tablet. Nothing is sent online.<br>
-          Clearing Chrome's data or using another device will start from the example menu, so keep a backup.</div>
+        <div class="note" data-th="privacyNote"></div>
         <input type="file" id="fileImport" accept=".json,application/json" hidden>
       </div>
     </div>
   </div>
 </div>
 
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 <div id="printArea" style="display:none"></div>
 
 <script>
 /* =====================================================================
-   DEFAULTS — the example menu used the first time, or after "Reset".
+   DEFAULTS — the starting setup, also restored by "Reset" in Settings.
    Day-to-day changes are made in the app via the gear icon.
    ===================================================================== */
 const DEFAULTS = {
-  shopName: "My Cafe",
+  shopName: "Mi Café",
+  lang: "es",                         // "es" | "en"
+  theme: "light",                     // "light" | "dark" | "auto"
   currencySymbol: "$",
   decimals: 2,                        // 2 = with cents, 0 = whole numbers only
   cashButtons: [5, 10, 20, 50, 100],
+  quickNotes: ["Para llevar", "Sin azúcar", "Leche de avena", "Leche descremada", "Extra caliente"],
   printMode: "passprnt",              // "passprnt" | "browser" | "none"
   paperWidthDots: 576,                // 576 = 80mm paper on TSP100III
   openDrawer: false,
-  receiptFooter: "Thank you! / ¡Gracias!",
-  theme: "auto",                      // "auto" | "light" | "dark"
+  receiptFooter: "¡Gracias! / Thank you!",
   keepAwake: true,
   vibrate: true,
   menu: [
-    { category: "Coffee", items: [
-      { name: "Espresso", price: 3.00 }, { name: "Americano", price: 3.50 },
-      { name: "Cortado", price: 4.00 },  { name: "Cappuccino", price: 4.50 },
-      { name: "Latte", price: 4.75 },    { name: "Mocha", price: 5.25 },
-      { name: "Drip Coffee", price: 2.75 },
+    { category: "Café", items: [
+      { name: "Espresso", price: 3.00 },  { name: "Americano", price: 3.50 },
+      { name: "Cortado", price: 4.00 },   { name: "Cappuccino", price: 4.50 },
+      { name: "Latte", price: 4.75 },     { name: "Mocha", price: 5.25 },
+      { name: "Café filtrado", price: 2.75 },
     ]},
-    { category: "Cold & Tea", items: [
-      { name: "Iced Coffee", price: 4.25 }, { name: "Iced Latte", price: 5.00 },
-      { name: "Hot Chocolate", price: 4.00 }, { name: "Tea", price: 3.00 },
+    { category: "Fríos y té", items: [
+      { name: "Café helado", price: 4.25 }, { name: "Latte helado", price: 5.00 },
+      { name: "Chocolate caliente", price: 4.00 }, { name: "Té", price: 3.00 },
     ]},
-    { category: "Food", items: [
+    { category: "Comida", items: [
       { name: "Tostones", price: 5.00 },  { name: "Empanada", price: 3.50 },
       { name: "Pastelito", price: 2.50 }, { name: "Croissant", price: 3.25 },
-      { name: "Muffin", price: 3.00 },    { name: "Sandwich", price: 8.50 },
+      { name: "Muffin", price: 3.00 },    { name: "Sándwich", price: 8.50 },
     ]},
-    { category: "Drinks", items: [
-      { name: "Fresh Juice", price: 4.50 }, { name: "Soda", price: 2.50 }, { name: "Water", price: 2.00 },
+    { category: "Bebidas", items: [
+      { name: "Jugo natural", price: 4.50 }, { name: "Refresco", price: 2.50 }, { name: "Agua", price: 2.00 },
     ]},
   ],
 };
 
+/* ---------- Text in both languages ---------- */
+const STR = {
+  es: {
+    order:"Orden", clear:"Borrar", total:"Total", charge:"Cobrar", back:"← Volver a la orden",
+    subtotal:"Subtotal", discount:"Descuento", addDiscount:"% Descuento", cashReceived:"Efectivo recibido",
+    change:"Cambio", owed:"Falta", exact:"Exacto", confirm:"Confirmar e imprimir", each:"c/u",
+    addNote:"+ Nota", editNote:"✎ Nota",
+    emptyOrder:"Toca productos del menú<br>para empezar una orden",
+    noItemsCat:"Aún no hay productos en esta categoría.", emptyMenu:"El menú está vacío.", tapGear:"Toca el engranaje ⚙ para agregar.",
+    clearConfirm:"¿Borrar esta orden?", reprintConfirm:"¿Reimprimir el último recibo?", reprinted:"Reimpreso",
+    printed:"Impreso ✓", printFailed:"Error al imprimir", retryHint:"Usa el botón de impresora para reintentar.",
+    noteTitle:"Nota para {x}", notePh:"ej. leche de avena, para llevar", save:"Guardar", cancel:"Cancelar", remove:"Quitar",
+    discTitle:"Descuento", discSub:"Se aplica a toda la orden", pct:"Porcentaje", amt:"Monto", apply:"Aplicar",
+    removeDisc:"Quitar", discPh:"Escribe un valor", newTotal:"Nuevo total",
+    todayTitle:"Hoy", todaySub:"Solo en esta tablet. Se borra solo cada día.", orders:"Órdenes", cashTotal:"Efectivo cobrado",
+    discGiven:"Descuentos dados", avg:"Promedio por orden", resetToday:"Borrar totales", resetTodayConfirm:"¿Borrar los totales de hoy?", close:"Cerrar",
+    settings:"Ajustes", tabMenu:"Menú", tabGeneral:"General", done:"Listo",
+    savedOnly:"Guardado solo en esta tablet", saved:"Guardado en esta tablet", cantSave:"No se puede guardar en este navegador",
+    categories:"Categorías", addCat:"+ Agregar categoría", addItem:"+ Agregar producto", item:"Producto", price:"Precio",
+    catNamePh:"Nombre de la categoría", itemNamePh:"Nombre del producto", noCats:"Aún no hay categorías",
+    startMenu:"Agrega una categoría para empezar el menú<br>(por ejemplo: Café, Comida, Bebidas).",
+    noItemsIn:"Aún no hay productos en “{x}”.", untitled:"Sin nombre",
+    delCatConfirm:"¿Eliminar “{x}” y sus {n} producto(s)?", delItemConfirm:"¿Eliminar “{x}”?", thisCat:"esta categoría",
+    gShop:"Negocio", cafeName:"Nombre del café", cafeNameSub:"Arriba en la pantalla y en el recibo",
+    receiptMsg:"Mensaje del recibo", receiptMsgSub:"Se imprime al final",
+    quickNotes:"Notas rápidas", quickNotesSub:"Botones para notas, separados por comas",
+    gScreen:"Pantalla", language:"Idioma", appearance:"Apariencia", appearanceSub:"Auto sigue el ajuste de la tablet",
+    auto:"Auto", light:"Claro", dark:"Oscuro",
+    keepAwake:"Pantalla siempre encendida", keepAwakeSub:"La tablet no se apaga mientras la caja está abierta",
+    vibe:"Vibrar al tocar", vibeSub:"Vibración corta al agregar productos",
+    gMoney:"Dinero", currency:"Símbolo de moneda", prices:"Precios", pricesSub:"Con centavos o solo números enteros",
+    withCents:"Con centavos · 4.50", noCents:"Sin centavos · 450",
+    quickCash:"Botones de efectivo", quickCashSub:"Billetes, separados por comas",
+    gPrinter:"Impresora", printing:"Impresión", printingSub:"PassPRNT para la impresora Bluetooth",
+    optPass:"Star PassPRNT (tablet)", optBrowser:"Diálogo de impresión (computadora)", optNone:"No imprimir",
+    drawer:"Abrir cajón de dinero", drawerSub:"Solo si hay un cajón conectado a la impresora",
+    gBackup:"Respaldo", menuBackup:"Respaldo del menú", menuBackupSub:"Guarda un archivo en Descargas de esta tablet",
+    download:"Descargar", restore:"Restaurar", startOver:"Empezar de nuevo", startOverSub:"Vuelve al menú de ejemplo", reset:"Restablecer",
+    privacyNote:"Todo se guarda solo en este navegador, en esta tablet. Nada se envía a internet.<br>Si se borran los datos de Chrome o se usa otro dispositivo, empieza con el menú de ejemplo; guarden un respaldo.",
+    backupSaved:"Respaldo guardado en Descargas", backupRestored:"Respaldo restaurado", badBackup:"Ese archivo no es un respaldo válido",
+    restoreConfirm:"¿Reemplazar el menú y los ajustes con este respaldo?", resetConfirm:"¿Borrar el menú y los ajustes y volver al ejemplo?", resetDone:"Menú de ejemplo restaurado",
+    rBill:"Factura", rTime:"Hora", rItem:"Producto", rQty:"Cant", rPrice:"Precio", rItems:"Total de productos",
+    rCash:"Efectivo", rReprint:"*** REIMPRESIÓN ***", title:"Caja",
+  },
+  en: {
+    order:"Order", clear:"Clear", total:"Total", charge:"Charge", back:"← Back to order",
+    subtotal:"Subtotal", discount:"Discount", addDiscount:"% Discount", cashReceived:"Cash received",
+    change:"Change", owed:"Still owed", exact:"Exact", confirm:"Confirm & Print", each:"each",
+    addNote:"+ Note", editNote:"✎ Note",
+    emptyOrder:"Tap items on the menu<br>to start an order",
+    noItemsCat:"No items in this category yet.", emptyMenu:"Your menu is empty.", tapGear:"Tap the ⚙ gear to add some.",
+    clearConfirm:"Clear this order?", reprintConfirm:"Reprint the last receipt?", reprinted:"Reprinted",
+    printed:"Printed ✓", printFailed:"Print failed", retryHint:"Use the printer button to try again.",
+    noteTitle:"Note for {x}", notePh:"e.g. oat milk, to go", save:"Save", cancel:"Cancel", remove:"Remove",
+    discTitle:"Discount", discSub:"Applies to the whole order", pct:"Percent", amt:"Amount", apply:"Apply",
+    removeDisc:"Remove", discPh:"Enter a value", newTotal:"New total",
+    todayTitle:"Today", todaySub:"Only on this tablet. Clears itself every day.", orders:"Orders", cashTotal:"Cash collected",
+    discGiven:"Discounts given", avg:"Average order", resetToday:"Clear totals", resetTodayConfirm:"Clear today's totals?", close:"Close",
+    settings:"Settings", tabMenu:"Menu", tabGeneral:"General", done:"Done",
+    savedOnly:"Saved on this tablet only", saved:"Saved on this tablet", cantSave:"Can't save on this browser",
+    categories:"Categories", addCat:"+ Add category", addItem:"+ Add item", item:"Item", price:"Price",
+    catNamePh:"Category name", itemNamePh:"Item name", noCats:"No categories yet",
+    startMenu:"Add a category to start building the menu<br>(for example: Coffee, Food, Drinks).",
+    noItemsIn:"No items in “{x}” yet.", untitled:"Untitled",
+    delCatConfirm:"Delete “{x}” and its {n} item(s)?", delItemConfirm:"Delete “{x}”?", thisCat:"this category",
+    gShop:"Shop", cafeName:"Cafe name", cafeNameSub:"Top of the screen and receipt",
+    receiptMsg:"Receipt message", receiptMsgSub:"Printed at the bottom",
+    quickNotes:"Quick notes", quickNotesSub:"Note buttons, separated by commas",
+    gScreen:"Screen", language:"Language", appearance:"Appearance", appearanceSub:"Auto follows the tablet's setting",
+    auto:"Auto", light:"Light", dark:"Dark",
+    keepAwake:"Keep screen on", keepAwakeSub:"Stops the tablet from sleeping while the register is open",
+    vibe:"Tap vibration", vibeSub:"Short buzz when adding items",
+    gMoney:"Money", currency:"Currency symbol", prices:"Prices", pricesSub:"Use cents or whole numbers only",
+    withCents:"With cents · 4.50", noCents:"No cents · 450",
+    quickCash:"Quick cash buttons", quickCashSub:"Bill amounts, separated by commas",
+    gPrinter:"Printer", printing:"Printing", printingSub:"PassPRNT for the Bluetooth printer",
+    optPass:"Star PassPRNT (tablet)", optBrowser:"Print dialog (computer)", optNone:"Don't print",
+    drawer:"Open cash drawer", drawerSub:"Only if a drawer is plugged into the printer",
+    gBackup:"Backup", menuBackup:"Menu backup", menuBackupSub:"Saves a file to this tablet's Downloads",
+    download:"Download", restore:"Restore", startOver:"Start over", startOverSub:"Restores the example menu", reset:"Reset",
+    privacyNote:"Everything here is stored only in this browser on this tablet. Nothing is sent online.<br>Clearing Chrome's data or using another device will start from the example menu, so keep a backup.",
+    backupSaved:"Backup saved to Downloads", backupRestored:"Backup restored", badBackup:"That file isn't a valid menu backup",
+    restoreConfirm:"Replace the current menu and settings with this backup?", resetConfirm:"Erase your menu and settings and go back to the example menu?", resetDone:"Reset to example menu",
+    rBill:"Bill Number", rTime:"Time", rItem:"Item", rQty:"Qty", rPrice:"Price", rItems:"Total Items",
+    rCash:"Cash", rReprint:"*** REPRINT ***", title:"Cash",
+  },
+};
+const t = (k, v={}) => (STR[CONFIG.lang]?.[k] ?? STR.en[k] ?? k).replace(/\{(\w)\}/g, (_,m) => v[m] ?? "");
+
 /* ---------- Device-only settings storage ---------- */
-const STORE_KEY = "cafeSettings.v1";
+const STORE_KEY = "cafeSettings.v2";
+try { localStorage.removeItem("cafeSettings.v1"); } catch(_) {}   // clear old test data from earlier versions
 const clone = o => JSON.parse(JSON.stringify(o));
 function normalize(s){
   const d = clone(DEFAULTS), out = Object.assign(d, s || {});
   out.decimals = +out.decimals === 0 ? 0 : 2;
-  out.theme = ["auto","light","dark"].includes(out.theme) ? out.theme : "auto";
+  out.theme = ["auto","light","dark"].includes(out.theme) ? out.theme : "light";
+  out.lang = out.lang === "en" ? "en" : "es";
   out.cashButtons = (Array.isArray(out.cashButtons) ? out.cashButtons : d.cashButtons).map(Number).filter(n => n > 0);
+  out.quickNotes = (Array.isArray(out.quickNotes) ? out.quickNotes : d.quickNotes).map(String).filter(x => x.trim());
   out.menu = (Array.isArray(out.menu) ? out.menu : []).map(c => ({
     category: String(c?.category ?? "Category"),
     items: (Array.isArray(c?.items) ? c.items : []).map(i => ({ name: String(i?.name ?? ""), price: +i?.price || 0 })),
@@ -409,14 +548,14 @@ function loadSettings(){
   try { const raw = localStorage.getItem(STORE_KEY); if (raw) return normalize(JSON.parse(raw)); } catch(_) {}
   return normalize(null);
 }
+function savedIdle(){ const n=$("savedNote"); n.classList.remove("flash"); n.innerHTML = `🔒 <span>${t("savedOnly")}</span>`; }
 function saveSettings(){
   let ok = true;
   try { localStorage.setItem(STORE_KEY, JSON.stringify(CONFIG)); } catch(_) { ok = false; }
   const n = $("savedNote");
-  if (!ok){ n.classList.remove("flash"); n.innerHTML = "⚠️ <span>Can't save on this browser</span>"; return; }
-  n.classList.add("flash"); n.innerHTML = "✓ <span>Saved on this tablet</span>";
-  clearTimeout(saveSettings.t);
-  saveSettings.t = setTimeout(() => { n.classList.remove("flash"); n.innerHTML = "🔒 <span>Saved on this tablet only</span>"; }, 1400);
+  if (!ok){ n.classList.remove("flash"); n.innerHTML = `⚠️ <span>${t("cantSave")}</span>`; return; }
+  n.classList.add("flash"); n.innerHTML = `✓ <span>${t("saved")}</span>`;
+  clearTimeout(saveSettings.t); saveSettings.t = setTimeout(savedIdle, 1400);
 }
 let CONFIG = loadSettings();
 
@@ -427,22 +566,28 @@ const money = c => CONFIG.currencySymbol + (c / scale).toLocaleString("en-US",
   {minimumFractionDigits: CONFIG.decimals, maximumFractionDigits: CONFIG.decimals});
 const esc = s => String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const buzz = () => { if (CONFIG.vibrate) try { navigator.vibrate?.(12); } catch(_) {} };
+const locale = () => CONFIG.lang === "es" ? "es" : "en-US";
+
+/* ---------- Language ---------- */
+function applyLang(){
+  document.documentElement.lang = CONFIG.lang;
+  document.querySelectorAll("[data-t]").forEach(el => el.textContent = t(el.dataset.t));
+  document.querySelectorAll("[data-th]").forEach(el => el.innerHTML = t(el.dataset.th));
+  savedIdle();
+}
 
 /* ---------- Theme ---------- */
 const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const resolvedTheme = () => CONFIG.theme === "auto" ? (darkMQ.matches ? "dark" : "light") : CONFIG.theme;
 function applyTheme(){
-  const t = resolvedTheme();
-  document.documentElement.dataset.theme = t;
-  $("metaTheme").content = t === "dark" ? "#14110e" : "#f6f1ea";
-  $("icoSun").style.display = t === "dark" ? "block" : "none";   // show what you'll switch to
-  $("icoMoon").style.display = t === "dark" ? "none" : "block";
+  const th = resolvedTheme();
+  document.documentElement.dataset.theme = th;
+  $("metaTheme").content = th === "dark" ? "#14110e" : "#f6f1ea";
+  $("icoSun").style.display = th === "dark" ? "block" : "none";
+  $("icoMoon").style.display = th === "dark" ? "none" : "block";
 }
 darkMQ.addEventListener?.("change", () => { if (CONFIG.theme === "auto") applyTheme(); });
-$("btnTheme").onclick = () => {
-  CONFIG.theme = resolvedTheme() === "dark" ? "light" : "dark";
-  saveSettings(); applyTheme();
-};
+$("btnTheme").onclick = () => { CONFIG.theme = resolvedTheme() === "dark" ? "light" : "dark"; saveSettings(); applyTheme(); };
 
 /* ---------- Keep screen awake ---------- */
 let wakeLock = null;
@@ -455,10 +600,26 @@ async function updateWakeLock(){
 }
 document.addEventListener("visibilitychange", updateWakeLock);
 
+/* ---------- Modal ---------- */
+function openModal(html){ $("sheet").innerHTML = html; $("modal").classList.add("on"); }
+function closeModal(){ $("modal").classList.remove("on"); $("sheet").innerHTML = ""; }
+$("modal").onclick = e => { if (e.target.id === "modal") closeModal(); };
+
 /* ---------- State (in memory only) ---------- */
-let order = [];            // [{name, price(cents), qty}]
+let order = [];            // [{name, price(cents), qty, note}]
+let discount = null;       // {type:"pct"|"amt", value}
 let activeCat = 0;
 let entry = "";            // typed cash amount, as a string
+
+const subtotal = () => order.reduce((a,l)=>a+l.price*l.qty,0);
+function discountCents(){
+  if (!discount) return 0;
+  const s = subtotal();
+  const d = discount.type === "pct" ? Math.round(s * discount.value / 100) : toCents(discount.value);
+  return Math.max(0, Math.min(s, d));
+}
+const grandTotal = () => subtotal() - discountCents();
+const discountLabel = () => discount ? (discount.type === "pct" ? `${discount.value}%` : money(toCents(discount.value))) : "";
 
 /* ---------- Menu ---------- */
 function renderCats(){
@@ -470,58 +631,132 @@ function renderGrid(){
   const cat = CONFIG.menu[activeCat];
   const items = cat ? cat.items.map((it,i) => ({it,i})).filter(x => x.it.name.trim()) : [];
   if (!items.length){
-    $("grid").innerHTML = `<div class="hint">${cat ? "No items in this category yet." : "Your menu is empty."}<br>Tap the ⚙ gear to add some.</div>`;
+    $("grid").innerHTML = `<div class="hint">${cat ? t("noItemsCat") : t("emptyMenu")}<br>${t("tapGear")}</div>`;
     return;
   }
   $("grid").innerHTML = items.map(({it,i}) => {
-    const line = order.find(l => l.name === it.name);
-    return `<button class="item ${line?"in":""}" data-i="${i}">
-      ${line ? `<i class="q">${line.qty}</i>` : ""}
+    const q = order.filter(l => l.name === it.name).reduce((a,l)=>a+l.qty,0);
+    return `<button class="item ${q?"in":""}" data-i="${i}">
+      ${q ? `<i class="q">${q}</i>` : ""}
       <b>${esc(it.name)}</b><span>${money(toCents(it.price))}</span></button>`;
   }).join("");
 }
 const EMPTY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>`;
 function renderOrder(){
   const lines = $("lines");
-  if (!order.length){ lines.innerHTML = `<div class="empty">${EMPTY_ICON}Tap items on the menu<br>to start an order</div>`; }
+  if (!order.length){ lines.innerHTML = `<div class="empty">${EMPTY_ICON}${t("emptyOrder")}</div>`; }
   else lines.innerHTML = order.map((l,i) => `
     <div class="line">
       <span class="n">${esc(l.name)}</span><span class="p">${money(l.price*l.qty)}</span>
+      ${l.note ? `<span class="nt">› ${esc(l.note)}</span>` : ""}
       <div class="qty">
-        <button data-act="dec" data-i="${i}" aria-label="Remove one">−</button><em>${l.qty}</em>
-        <button data-act="inc" data-i="${i}" aria-label="Add one">+</button>
-        <small>${money(l.price)} each</small>
+        <button data-act="dec" data-i="${i}" aria-label="−">−</button><em>${l.qty}</em>
+        <button data-act="inc" data-i="${i}" aria-label="+">+</button>
+        <small>${money(l.price)} ${t("each")}</small>
+        <button class="notebtn" data-act="note" data-i="${i}">${l.note ? t("editNote") : t("addNote")}</button>
       </div>
     </div>`).join("");
-  const n = order.reduce((a,l)=>a+l.qty,0);
-  $("itemCount").textContent = n;
-  $("total").textContent = money(orderTotal());
+  $("itemCount").textContent = order.reduce((a,l)=>a+l.qty,0);
+  $("total").textContent = money(subtotal());
   $("btnPay").disabled = !order.length;
   $("btnClear").disabled = !order.length;
   renderGrid();
 }
-const orderTotal = () => order.reduce((a,l)=>a+l.price*l.qty,0);
+function resetOrder(){ order = []; discount = null; entry = ""; }
 
 $("cats").onclick = e => { const b=e.target.closest(".cat"); if(!b) return; activeCat=+b.dataset.i; renderCats(); renderGrid(); };
 $("grid").onclick = e => {
   const b = e.target.closest(".item"); if(!b) return;
   const it = CONFIG.menu[activeCat].items[+b.dataset.i];
-  const line = order.find(l => l.name === it.name);
-  if (line) line.qty++; else order.push({name: it.name, price: toCents(it.price), qty: 1});
+  let idx = order.findIndex(l => l.name === it.name && !l.note);
+  if (idx >= 0) order[idx].qty++; else { order.push({name: it.name, price: toCents(it.price), qty: 1, note: ""}); idx = order.length-1; }
   buzz(); renderOrder();
-  const ln = $("lines").querySelectorAll(".line")[order.findIndex(l => l.name === it.name)];
-  ln?.scrollIntoView({block:"nearest"});
+  $("lines").querySelectorAll(".line")[idx]?.scrollIntoView({block:"nearest"});
 };
 $("lines").onclick = e => {
   const b = e.target.closest("button"); if(!b) return;
-  const l = order[+b.dataset.i];
+  const i = +b.dataset.i, l = order[i];
   if (b.dataset.act === "inc") l.qty++;
-  else if (--l.qty <= 0) order.splice(+b.dataset.i, 1);
+  else if (b.dataset.act === "dec"){ if (--l.qty <= 0) order.splice(i, 1); }
+  else if (b.dataset.act === "note"){ openNote(i); return; }
   renderOrder();
 };
-$("btnClear").onclick = () => { if (order.length && confirm("Clear this order?")) { order=[]; renderOrder(); } };
+$("btnClear").onclick = () => { if (order.length && confirm(t("clearConfirm"))) { resetOrder(); renderOrder(); } };
 $("btnPay").onclick = () => { entry=""; showScreen("scrPay"); renderPay(); };
 $("btnBack").onclick = () => showScreen("scrMenu");
+
+/* ---------- Item notes ---------- */
+function openNote(i){
+  const l = order[i];
+  openModal(`
+    <h3>${t("noteTitle",{x:esc(l.name)})}</h3>
+    <div class="sub">${l.qty} × ${esc(l.name)}</div>
+    <input type="text" id="noteIn" value="${esc(l.note)}" placeholder="${esc(t("notePh"))}" maxlength="80">
+    <div class="chips" id="noteChips">${CONFIG.quickNotes.map(q=>`<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+    <div class="actions">
+      ${l.note ? `<button class="danger" id="noteDel">${t("remove")}</button>` : ""}
+      <button id="noteCancel">${t("cancel")}</button>
+      <button class="primary" id="noteSave">${t("save")}</button>
+    </div>`);
+  const inp = $("noteIn");
+  const parts = () => inp.value.split(",").map(s=>s.trim()).filter(Boolean);
+  const syncChips = () => { const p = parts(); $("noteChips").querySelectorAll("button").forEach(b => b.classList.toggle("on", p.includes(b.dataset.q))); };
+  syncChips(); inp.oninput = syncChips;
+  $("noteChips").onclick = e => {
+    const b = e.target.closest("button"); if(!b) return;
+    let p = parts(); p = p.includes(b.dataset.q) ? p.filter(x=>x!==b.dataset.q) : [...p, b.dataset.q];
+    inp.value = p.join(", "); syncChips();
+  };
+  const save = note => {
+    l.note = note.trim();
+    const dup = order.findIndex((o,j) => j!==i && o.name===l.name && o.note===l.note);   // merge identical lines
+    if (dup >= 0){ order[dup].qty += l.qty; order.splice(i,1); }
+    closeModal(); renderOrder();
+  };
+  $("noteSave").onclick = () => save(parts().join(", "));
+  $("noteCancel").onclick = closeModal;
+  if ($("noteDel")) $("noteDel").onclick = () => save("");
+  inp.onkeydown = e => { if (e.key === "Enter") $("noteSave").click(); };
+  setTimeout(() => inp.focus(), 50);
+}
+
+/* ---------- Discount ---------- */
+function openDiscount(){
+  let type = discount?.type || "pct", val = discount ? String(discount.value) : "";
+  const draw = () => {
+    const s = subtotal();
+    const v = parseFloat(val) || 0;
+    const d = Math.max(0, Math.min(s, type === "pct" ? Math.round(s * Math.min(v,100) / 100) : toCents(v)));
+    openModal(`
+      <h3>${t("discTitle")}</h3>
+      <div class="sub">${t("discSub")} · ${t("subtotal")} ${money(s)}</div>
+      <div class="seg" id="discType" style="margin-bottom:12px;display:inline-flex">
+        <button data-v="pct" class="${type==="pct"?"on":""}">${t("pct")} %</button>
+        <button data-v="amt" class="${type==="amt"?"on":""}">${t("amt")} ${esc(CONFIG.currencySymbol)}</button>
+      </div>
+      <input type="text" id="discIn" inputmode="decimal" value="${esc(val)}" placeholder="${esc(t("discPh"))}">
+      ${type==="pct" ? `<div class="chips" id="discChips">${[5,10,15,20,25,50].map(p=>`<button data-p="${p}" class="${v===p?"on":""}">${p}%</button>`).join("")}</div>` : ""}
+      <div class="preview"><span>${t("discount")} −${money(d)}</span><span>${t("newTotal")} <b>${money(s-d)}</b></span></div>
+      <div class="actions">
+        ${discount ? `<button class="danger" id="discDel">${t("removeDisc")}</button>` : ""}
+        <button id="discCancel">${t("cancel")}</button>
+        <button class="primary" id="discApply" ${v>0?"":"disabled style=opacity:.4"}>${t("apply")}</button>
+      </div>`);
+    const inp = $("discIn");
+    inp.oninput = () => { val = inp.value.replace(/[^0-9.]/g,""); const pos = inp.selectionStart; draw(); const n=$("discIn"); n.focus(); n.setSelectionRange(pos,pos); };
+    $("discType").onclick = e => { const b=e.target.closest("button"); if(!b) return; type=b.dataset.v; val=""; draw(); $("discIn").focus(); };
+    if ($("discChips")) $("discChips").onclick = e => { const b=e.target.closest("button"); if(!b) return; val=b.dataset.p; draw(); };
+    $("discCancel").onclick = closeModal;
+    if ($("discDel")) $("discDel").onclick = () => { discount = null; closeModal(); renderPay(); };
+    $("discApply").onclick = () => {
+      if (!(v > 0)) return;
+      discount = {type, value: type === "pct" ? Math.min(v,100) : v};
+      closeModal(); renderPay();
+    };
+  };
+  draw();
+}
+$("btnDisc").onclick = openDiscount;
 
 /* ---------- Payment ---------- */
 const received = () => entry ? Math.round(parseFloat(entry) * scale) || 0 : 0;
@@ -529,7 +764,7 @@ const received = () => entry ? Math.round(parseFloat(entry) * scale) || 0 : 0;
 function buildPad(){
   const keys = ["1","2","3","4","5","6","7","8","9", CONFIG.decimals ? "." : "00","0","⌫"];
   $("pad").innerHTML = keys.map(k=>`<button data-k="${k}">${k}</button>`).join("");
-  $("quick").innerHTML = `<button class="exact" data-q="exact">Exact</button>` +
+  $("quick").innerHTML = `<button class="exact" data-q="exact">${t("exact")}</button>` +
     CONFIG.cashButtons.map(v=>`<button data-q="${v}">+${esc(CONFIG.currencySymbol)}${v}</button>`).join("");
 }
 $("pad").onclick = e => {
@@ -538,7 +773,7 @@ $("pad").onclick = e => {
   else if (k === ".") { if (!entry.includes(".")) entry = (entry||"0") + "."; }
   else {
     const dot = entry.indexOf(".");
-    if (dot >= 0 && entry.length - dot > CONFIG.decimals) return;   // limit decimals
+    if (dot >= 0 && entry.length - dot > CONFIG.decimals) return;
     if (entry.replace(".","").length >= 9) return;
     entry = (entry === "0" ? "" : entry) + k;
   }
@@ -546,52 +781,91 @@ $("pad").onclick = e => {
 };
 $("quick").onclick = e => {
   const q = e.target.closest("button")?.dataset.q; if(!q) return;
-  const cents = q === "exact" ? orderTotal() : received() + toCents(+q);
+  const cents = q === "exact" ? grandTotal() : received() + toCents(+q);
   entry = (cents/scale).toFixed(CONFIG.decimals);
   renderPay();
 };
 function renderPay(){
-  const t = orderTotal(), r = received(), diff = r - t;
-  $("payTotal").textContent = money(t);
+  const s = subtotal(), d = discountCents(), tot = s - d, r = received(), diff = r - tot;
+  $("rowSub").hidden = $("rowDisc").hidden = !d;
+  $("paySub").textContent = money(s);
+  $("discLbl").textContent = `${t("discount")} (${discountLabel()})`;
+  $("payDisc").textContent = "−" + money(d);
+  $("btnDisc").textContent = discount ? `${t("discount")}: ${discountLabel()}` : t("addDiscount");
+  $("btnDisc").classList.toggle("on", !!discount);
+  $("payTotal").textContent = money(tot);
   $("payRecv").textContent = money(r);
   $("display").innerHTML = `<small>${esc(CONFIG.currencySymbol)}</small>${esc(entry || "0")}`;
   const row = $("changeRow");
-  if (diff >= 0){ row.classList.remove("short"); $("changeLbl").textContent="Change"; $("payChange").textContent=money(diff); }
-  else { row.classList.add("short"); $("changeLbl").textContent="Still owed"; $("payChange").textContent=money(-diff); }
-  $("btnConfirm").disabled = !(r >= t && t > 0);
-  $("paySummary").innerHTML = order.map(l=>`<div><span>${l.qty} × ${esc(l.name)}</span><span>${money(l.price*l.qty)}</span></div>`).join("");
+  if (diff >= 0){ row.classList.remove("short"); $("changeLbl").textContent=t("change"); $("payChange").textContent=money(diff); }
+  else { row.classList.add("short"); $("changeLbl").textContent=t("owed"); $("payChange").textContent=money(-diff); }
+  $("btnConfirm").disabled = !(r >= tot && s > 0);
+  $("paySummary").innerHTML = order.map(l=>`<div><span>${l.qty} × ${esc(l.name)}</span><span>${money(l.price*l.qty)}</span></div>${l.note?`<i>› ${esc(l.note)}</i>`:""}`).join("");
 }
 
-/* ---------- Bill number (kept only on this tablet, resets daily) ---------- */
+/* ---------- Bill number + today's totals (this tablet only, reset daily) ---------- */
+const todayKey = () => new Date().toDateString();
 function nextBillNumber(){
-  const today = new Date().toDateString();
   let n = 1;
   try {
     const s = JSON.parse(localStorage.getItem("billCounter") || "{}");
-    n = s.day === today ? s.n + 1 : 1;
-    localStorage.setItem("billCounter", JSON.stringify({day: today, n}));
+    n = s.day === todayKey() ? s.n + 1 : 1;
+    localStorage.setItem("billCounter", JSON.stringify({day: todayKey(), n}));
   } catch(_) {}
   return String(n).padStart(4, "0");
 }
+function getToday(){
+  try { const s = JSON.parse(localStorage.getItem("dayTotals") || "{}"); if (s.day === todayKey()) return s; } catch(_) {}
+  return {day: todayKey(), orders: 0, cash: 0, disc: 0};
+}
+function addToToday(totalC, discC){
+  const s = getToday(); s.orders++; s.cash += totalC / scale; s.disc += discC / scale;
+  try { localStorage.setItem("dayTotals", JSON.stringify(s)); } catch(_) {}
+}
+$("btnToday").onclick = () => {
+  const s = getToday(), c = toCents(s.cash);
+  openModal(`
+    <h3>${t("todayTitle")} · ${esc(new Date().toLocaleDateString(locale(),{weekday:"long",day:"numeric",month:"long"}))}</h3>
+    <div class="sub">${t("todaySub")}</div>
+    <div class="stats">
+      <div class="stat wide"><span>${t("cashTotal")}</span><b>${money(c)}</b></div>
+      <div class="stat"><span>${t("orders")}</span><b>${s.orders}</b></div>
+      <div class="stat"><span>${t("avg")}</span><b>${money(s.orders ? Math.round(c / s.orders) : 0)}</b></div>
+      <div class="stat" style="grid-column:1/-1"><span>${t("discGiven")}</span><b>${money(toCents(s.disc))}</b></div>
+    </div>
+    <div class="actions">
+      <button class="danger" id="todayReset">${t("resetToday")}</button>
+      <button class="primary" id="todayClose">${t("close")}</button>
+    </div>`);
+  $("todayClose").onclick = closeModal;
+  $("todayReset").onclick = () => {
+    if (!confirm(t("resetTodayConfirm"))) return;
+    try { localStorage.removeItem("dayTotals"); } catch(_) {}
+    closeModal();
+  };
+};
+
 function stamp(d = new Date()){
-  return d.toLocaleString("en-US",{weekday:"short",month:"short",day:"numeric"}) + ", " +
-         d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  return d.toLocaleString(locale(),{weekday:"short",month:"short",day:"numeric"}) + ", " +
+         d.toLocaleTimeString(locale(),{hour:"numeric",minute:"2-digit"});
 }
 
 /* ---------- Receipt ---------- */
-function receiptHTML(bill, totalC, recvC, reprint){
+function receiptHTML(bill, subC, discC, totC, recvC){
   const W = CONFIG.paperWidthDots;
-  const rows = order.map(l=>`<tr><td>${esc(l.name)}</td><td class="c">${l.qty}</td><td class="r">${money(l.price*l.qty)}</td></tr>`).join("");
+  const rows = order.map(l=>`<tr><td>${esc(l.name)}</td><td class="c">${l.qty}</td><td class="r">${money(l.price*l.qty)}</td></tr>` +
+    (l.note ? `<tr><td colspan="3" class="nt">&nbsp;&nbsp;› ${esc(l.note)}</td></tr>` : "")).join("");
   const n = order.reduce((a,l)=>a+l.qty,0);
-  return `<html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no">
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no">
 <style>
 body{margin:0;width:${W}px;font-family:"Courier New",monospace;font-size:28px;color:#000;background:#fff}
 .w{padding:8px 4px 24px}
 h1{font-size:40px;text-align:center;margin:0 0 12px}
-table{width:100%;border-collapse:collapse}
+table{width:100%;border-collapse:collapse;font-size:inherit}
 th{text-align:left;border-top:2px dashed #000;border-bottom:2px dashed #000;padding:6px 0}
 td{padding:6px 0;vertical-align:top}
-.c{text-align:center;width:70px}.r{text-align:right;width:170px}
+td.nt{padding:0 0 6px;font-size:24px;font-style:italic}
+.c{text-align:center;width:80px}.r{text-align:right;width:170px}
 .hr{border-top:2px dashed #000;margin:8px 0}
 .b{font-weight:bold;font-size:34px}
 .f{text-align:center;margin-top:18px}
@@ -599,14 +873,15 @@ td{padding:6px 0;vertical-align:top}
 </style></head><body><div class="w">
 <!--REPRINT-->
 <h1>${esc(CONFIG.shopName)}</h1>
-<div>Bill Number: #${bill}</div>
-<div>Time: ${stamp()}</div>
-<table><tr><th>Item</th><th class="c">Qty</th><th class="r">Price</th></tr>${rows}</table>
+<div>${t("rBill")}: #${bill}</div>
+<div>${t("rTime")}: ${esc(stamp())}</div>
+<table><tr><th>${t("rItem")}</th><th class="c">${t("rQty")}</th><th class="r">${t("rPrice")}</th></tr>${rows}</table>
 <div class="hr"></div>
-<div>Total Items: ${n}</div>
-<div class="b">Total: ${money(totalC)}</div>
-<div>Cash: ${money(recvC)}</div>
-<div class="b">Change: ${money(recvC-totalC)}</div>
+<div>${t("rItems")}: ${n}</div>
+${discC ? `<div>${t("subtotal")}: ${money(subC)}</div><div>${t("discount")} (${esc(discountLabel())}): -${money(discC)}</div>` : ""}
+<div class="b">${t("total")}: ${money(totC)}</div>
+<div>${t("rCash")}: ${money(recvC)}</div>
+<div class="b">${t("change")}: ${money(recvC-totC)}</div>
 ${CONFIG.receiptFooter ? `<div class="f">${esc(CONFIG.receiptFooter)}</div>` : ""}
 </div></body></html>`;
 }
@@ -631,22 +906,23 @@ function sendToPrinter(html, changeMsg){
 }
 
 /* Last receipt kept only for this browser tab session, for "Reprint" */
-function setLastReceipt(html){ try { html ? sessionStorage.setItem("lastReceipt", html) : sessionStorage.removeItem("lastReceipt"); } catch(_) {} refreshReprint(); }
+function setLastReceipt(html){ try { sessionStorage.setItem("lastReceipt", html); } catch(_) {} refreshReprint(); }
 function getLastReceipt(){ try { return sessionStorage.getItem("lastReceipt"); } catch(_) { return null; } }
 function refreshReprint(){ $("btnReprint").hidden = !getLastReceipt(); }
 $("btnReprint").onclick = () => {
   const h = getLastReceipt(); if (!h) return;
-  if (!confirm("Reprint the last receipt?")) return;
-  sendToPrinter(h.replace("<!--REPRINT-->", `<div class="rp">*** REPRINT ***</div>`), "Reprinted");
+  if (!confirm(t("reprintConfirm"))) return;
+  sendToPrinter(h.replace("<!--REPRINT-->", `<div class="rp">${t("rReprint")}</div>`), t("reprinted"));
 };
 
 $("btnConfirm").onclick = () => {
-  const t = orderTotal(), r = received();
-  if (r < t) return;
-  const html = receiptHTML(nextBillNumber(), t, r);
-  const changeMsg = "Change: " + money(r - t);
+  const s = subtotal(), d = discountCents(), tot = s - d, r = received();
+  if (r < tot || !s) return;
+  const html = receiptHTML(nextBillNumber(), s, d, tot, r);
+  const changeMsg = t("change") + ": " + money(r - tot);
+  addToToday(tot, d);
   setLastReceipt(html);
-  order = []; entry = ""; activeCat = 0;
+  resetOrder(); activeCat = 0;
   renderCats(); renderOrder(); showScreen("scrMenu");
   sendToPrinter(html, changeMsg);
 };
@@ -662,42 +938,42 @@ const S = {
     $("settings").classList.add("on");
   },
   close(){
-    CONFIG.menu.forEach(c => c.items = c.items.filter(i => i.name.trim()));   // drop blank rows
+    CONFIG.menu.forEach(c => c.items = c.items.filter(i => i.name.trim()));
     saveSettings();
     $("settings").classList.remove("on");
     applySettings();
   },
   renderCatList(){
     $("catList").innerHTML = CONFIG.menu.length ? CONFIG.menu.map((c,i) =>
-      `<button class="sc ${i===setCat?"on":""}" data-sc="${i}"><span>${esc(c.category) || "<em>Untitled</em>"}</span><small>${c.items.length}</small></button>`).join("")
-      : `<div class="nocat">No categories yet</div>`;
+      `<button class="sc ${i===setCat?"on":""}" data-sc="${i}"><span>${esc(c.category) || `<em>${t("untitled")}</em>`}</span><small>${c.items.length}</small></button>`).join("")
+      : `<div class="nocat">${t("noCats")}</div>`;
   },
   renderMenuEditor(){
     S.renderCatList();
     const ed = $("catEditor"), c = CONFIG.menu[setCat];
-    if (!c){ ed.innerHTML = `<div class="nocat">Add a category to start building the menu<br>(for example: Coffee, Food, Drinks).</div>`; return; }
+    if (!c){ ed.innerHTML = `<div class="nocat">${t("startMenu")}</div>`; return; }
     const n = CONFIG.menu.length, sym = esc(CONFIG.currencySymbol);
     ed.innerHTML = `
       <div class="ce-h">
-        <input id="catName" value="${esc(c.category)}" placeholder="Category name" aria-label="Category name">
-        <button class="ib" data-cmove="-1" ${setCat===0?"disabled":""} aria-label="Move up">↑</button>
-        <button class="ib" data-cmove="1" ${setCat===n-1?"disabled":""} aria-label="Move down">↓</button>
-        <button class="ib del" id="delCat" aria-label="Delete category">✕</button>
+        <input id="catName" value="${esc(c.category)}" placeholder="${esc(t("catNamePh"))}">
+        <button class="ib" data-cmove="-1" ${setCat===0?"disabled":""} aria-label="↑">↑</button>
+        <button class="ib" data-cmove="1" ${setCat===n-1?"disabled":""} aria-label="↓">↓</button>
+        <button class="ib del" id="delCat" aria-label="✕">✕</button>
       </div>
       <div class="items">
-        ${c.items.length ? `<div class="ir-head"><span>Item</span><span style="text-align:right">Price</span><span></span><span></span><span></span></div>` : ""}
+        ${c.items.length ? `<div class="ir-head"><span>${t("item")}</span><span style="text-align:right">${t("price")}</span><span></span><span></span><span></span></div>` : ""}
         ${c.items.map((it,i)=>`
           <div class="ir">
-            <input data-f="name" data-ii="${i}" value="${esc(it.name)}" placeholder="Item name">
+            <input data-f="name" data-ii="${i}" value="${esc(it.name)}" placeholder="${esc(t("itemNamePh"))}">
             <div class="price"><span>${sym}</span><input data-f="price" data-ii="${i}" type="text" inputmode="decimal"
               value="${it.price ? it.price.toFixed(CONFIG.decimals) : ""}" placeholder="0"></div>
-            <button class="ib" data-imove="-1" data-ii="${i}" ${i===0?"disabled":""} aria-label="Move up">↑</button>
-            <button class="ib" data-imove="1" data-ii="${i}" ${i===c.items.length-1?"disabled":""} aria-label="Move down">↓</button>
-            <button class="ib del" data-idel="${i}" aria-label="Delete item">✕</button>
+            <button class="ib" data-imove="-1" data-ii="${i}" ${i===0?"disabled":""} aria-label="↑">↑</button>
+            <button class="ib" data-imove="1" data-ii="${i}" ${i===c.items.length-1?"disabled":""} aria-label="↓">↓</button>
+            <button class="ib del" data-idel="${i}" aria-label="✕">✕</button>
           </div>`).join("")}
-        ${c.items.length ? "" : `<div class="noitems">No items in “${esc(c.category)}” yet.</div>`}
+        ${c.items.length ? "" : `<div class="noitems">${t("noItemsIn",{x:esc(c.category)})}</div>`}
       </div>
-      <button class="add" id="addItem">+ Add item</button>`;
+      <button class="add" id="addItem">${t("addItem")}</button>`;
   },
   focusLast(){
     const ins = $("catEditor").querySelectorAll('[data-f="name"]');
@@ -706,6 +982,7 @@ const S = {
   fillGeneral(){
     $("fName").value = CONFIG.shopName;
     $("fFooter").value = CONFIG.receiptFooter;
+    $("fNotes").value = CONFIG.quickNotes.join(", ");
     $("fCur").value = CONFIG.currencySymbol;
     $("fCash").value = CONFIG.cashButtons.join(", ");
     $("fPrint").value = CONFIG.printMode;
@@ -714,16 +991,17 @@ const S = {
     $("fVibe").checked = !!CONFIG.vibrate;
     $("fDec").querySelectorAll("button").forEach(b => b.classList.toggle("on", +b.dataset.v === CONFIG.decimals));
     $("fTheme").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === CONFIG.theme));
+    $("fLang").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === CONFIG.lang));
   },
 };
 
 $("btnSettings").onclick = S.open;
 $("btnDone").onclick = S.close;
 document.querySelector(".tabs").onclick = e => {
-  const t = e.target.closest(".tab"); if(!t) return;
-  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x===t));
-  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id===t.dataset.tab));
-  if (t.dataset.tab === "paneMenu") S.renderMenuEditor();
+  const tb = e.target.closest(".tab"); if(!tb) return;
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x===tb));
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id===tb.dataset.tab));
+  if (tb.dataset.tab === "paneMenu") S.renderMenuEditor();
 };
 
 $("catList").onclick = e => { const b=e.target.closest("[data-sc]"); if(!b) return; setCat=+b.dataset.sc; S.renderMenuEditor(); };
@@ -759,8 +1037,7 @@ $("catEditor").addEventListener("click", e => {
   const menu = CONFIG.menu, c = menu[setCat];
   if (b.id === "addItem"){ c.items.push({name:"", price:0}); saveSettings(); S.renderMenuEditor(); S.focusLast(); return; }
   if (b.id === "delCat"){
-    const label = c.category || "this category";
-    if (!confirm(`Delete “${label}” and its ${c.items.length} item(s)?`)) return;
+    if (!confirm(t("delCatConfirm",{x: c.category || t("thisCat"), n: c.items.length}))) return;
     menu.splice(setCat,1); setCat = Math.max(0, setCat-1); saveSettings(); S.renderMenuEditor(); return;
   }
   if (b.dataset.cmove){
@@ -773,7 +1050,7 @@ $("catEditor").addEventListener("click", e => {
   }
   if (b.dataset.idel !== undefined){
     const i = +b.dataset.idel, it = c.items[i];
-    if (it.name.trim() && !confirm(`Delete “${it.name}”?`)) return;
+    if (it.name.trim() && !confirm(t("delItemConfirm",{x: it.name}))) return;
     c.items.splice(i,1); saveSettings(); S.renderMenuEditor();
   }
 });
@@ -785,18 +1062,20 @@ $("fPrint").onchange  = e => { CONFIG.printMode = e.target.value; saveSettings()
 $("fDrawer").onchange = e => { CONFIG.openDrawer = e.target.checked; saveSettings(); };
 $("fAwake").onchange  = e => { CONFIG.keepAwake = e.target.checked; saveSettings(); updateWakeLock(); };
 $("fVibe").onchange   = e => { CONFIG.vibrate = e.target.checked; saveSettings(); buzz(); };
+$("fNotes").onchange  = e => {
+  CONFIG.quickNotes = e.target.value.split(",").map(s=>s.trim()).filter(Boolean).slice(0,12);
+  e.target.value = CONFIG.quickNotes.join(", "); saveSettings();
+};
 $("fCash").onchange   = e => {
   const v = e.target.value.split(/[,\s]+/).map(Number).filter(n => n > 0);
   CONFIG.cashButtons = v.length ? v.slice(0,8) : clone(DEFAULTS.cashButtons);
   e.target.value = CONFIG.cashButtons.join(", "); saveSettings();
 };
-$("fDec").onclick = e => {
+$("fDec").onclick = e => { const b=e.target.closest("button"); if(!b) return; CONFIG.decimals = +b.dataset.v; saveSettings(); S.fillGeneral(); applySettings(); };
+$("fTheme").onclick = e => { const b=e.target.closest("button"); if(!b) return; CONFIG.theme = b.dataset.v; saveSettings(); S.fillGeneral(); applyTheme(); };
+$("fLang").onclick = e => {
   const b = e.target.closest("button"); if(!b) return;
-  CONFIG.decimals = +b.dataset.v; saveSettings(); S.fillGeneral(); applySettings();
-};
-$("fTheme").onclick = e => {
-  const b = e.target.closest("button"); if(!b) return;
-  CONFIG.theme = b.dataset.v; saveSettings(); S.fillGeneral(); applyTheme();
+  CONFIG.lang = b.dataset.v; saveSettings(); applySettings(); S.fillGeneral(); S.renderMenuEditor();
 };
 
 $("btnExport").onclick = () => {
@@ -806,7 +1085,7 @@ $("btnExport").onclick = () => {
   a.download = "cafe-menu-backup-" + new Date().toISOString().slice(0,10) + ".json";
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  toast("Backup saved to Downloads");
+  toast(t("backupSaved"));
 };
 $("btnImport").onclick = () => $("fileImport").click();
 $("fileImport").onchange = e => {
@@ -816,44 +1095,44 @@ $("fileImport").onchange = e => {
     try {
       const data = JSON.parse(rd.result);
       if (!Array.isArray(data.menu)) throw 0;
-      if (!confirm("Replace the current menu and settings with this backup?")) return;
+      if (!confirm(t("restoreConfirm"))) return;
       CONFIG = normalize(data); setCat = 0; saveSettings(); applySettings();
-      S.renderMenuEditor(); S.fillGeneral(); toast("Backup restored");
-    } catch(_) { toast("That file isn't a valid menu backup", true); }
+      S.renderMenuEditor(); S.fillGeneral(); toast(t("backupRestored"));
+    } catch(_) { toast(t("badBackup"), true); }
   };
   rd.readAsText(f);
 };
 $("btnReset").onclick = () => {
-  if (!confirm("Erase your menu and settings and go back to the example menu?")) return;
+  if (!confirm(t("resetConfirm"))) return;
   CONFIG = normalize(null); setCat = 0; saveSettings(); applySettings();
-  S.renderMenuEditor(); S.fillGeneral(); toast("Reset to example menu");
+  S.renderMenuEditor(); S.fillGeneral(); toast(t("resetDone"));
 };
 
 /* ---------- Helpers ---------- */
 function applySettings(){
   scale = Math.pow(10, CONFIG.decimals);
   $("shopName").textContent = CONFIG.shopName;
-  document.title = (CONFIG.shopName || "Cafe") + " — Cash";
-  applyTheme(); buildPad(); renderCats(); renderOrder(); updateWakeLock();
+  document.title = (CONFIG.shopName || "Cafe") + " — " + t("title");
+  applyLang(); applyTheme(); buildPad(); renderCats(); renderOrder(); tick(); updateWakeLock();
 }
 function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on", s.id===id)); }
-let tt; function toast(msg, err){ const t=$("toast"); t.textContent=msg; t.className="toast on"+(err?" err":""); clearTimeout(tt); tt=setTimeout(()=>t.className="toast", err?7000:4000); }
+let tt; function toast(msg, err){ const el=$("toast"); el.textContent=msg; el.className="toast on"+(err?" err":""); clearTimeout(tt); tt=setTimeout(()=>el.className="toast", err?7000:4000); }
 function tick(){ $("clock").textContent = stamp(); }
 
 /* ---------- Coming back from PassPRNT ---------- */
-(function handleReturn(){
+function handleReturn(){
   const p = new URLSearchParams(location.search);
   if (!p.has("passprnt_code")) return;
   const code = p.get("passprnt_code");
   let last = ""; try { last = sessionStorage.getItem("lastChange") || ""; sessionStorage.removeItem("lastChange"); } catch(_) {}
-  if (code === "0") toast("Printed ✓  " + last);
-  else toast("Print failed: " + (p.get("passprnt_message") || "code " + code) + (last ? " — " + last : "") + ". Use the printer button to try again.", true);
+  if (code === "0") toast(t("printed") + "  " + last);
+  else toast(t("printFailed") + ": " + (p.get("passprnt_message") || code) + (last ? " — " + last : "") + ". " + t("retryHint"), true);
   history.replaceState(null, "", location.pathname);
-})();
+}
 
 /* ---------- Start ---------- */
 try { navigator.storage?.persist?.(); } catch(_) {}
-applySettings(); refreshReprint(); tick(); setInterval(tick, 30000);
+applySettings(); refreshReprint(); handleReturn(); setInterval(tick, 30000);
 </script>
 </body>
 </html>

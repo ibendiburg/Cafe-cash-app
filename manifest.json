@@ -1,6 +1,6 @@
 {
-  "name": "Cafe Cash Register",
-  "short_name": "Cash",
+  "name": "Caja del Café",
+  "short_name": "Caja",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
